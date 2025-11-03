@@ -14,7 +14,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
 <style>
-:root{--verde:#2e8b57;--panel:#f4f7f4;--texto:#222;--fondo:#fff}
+:root{--verde:#2e8b57;--amarillo:#c49b00;--rojo:#8b1a1a;--panel:#f4f7f4;--texto:#222;--fondo:#fff}
 body{font-family:Inter,Segoe UI,Arial,sans-serif;margin:12px;background:var(--fondo);color:var(--texto)}
 .container{max-width:1100px;margin:0 auto}
 .header{display:flex;justify-content:space-between;align-items:center}
@@ -38,6 +38,16 @@ th{background:#eef7ef;color:var(--verde)}
 .footer{position:fixed;right:12px;bottom:12px;color:var(--verde);opacity:.8}
 .notice{background:#fff3cd;border:1px solid #ffeeba;padding:8px;border-radius:6px;margin-top:10px}
 .summary{background:var(--panel);padding:10px;border-radius:8px;border:1px solid #ddd;margin-top:12px}
+
+/* Bars for CG / IRE / VG */
+.bar-row{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.bar-labels{display:flex;justify-content:space-between;font-size:0.9rem}
+.bar-container{width:100%;height:14px;background:#e6e6e6;border-radius:8px;overflow:hidden}
+.bar{height:100%;width:0%;transition:width .4s ease, background-color .3s}
+.bar.low{background:var(--verde)}
+.bar.medium{background:var(--amarillo)}
+.bar.high{background:var(--rojo)}
+.small-note{font-size:0.85rem;color:#444}
 </style>
 </head>
 <body>
@@ -86,6 +96,23 @@ th{background:#eef7ef;color:var(--verde)}
 
   <div class="summary">
     <div id="resultado">CG total: 0 | Kcal total: 0</div>
+    <div class="bar-row">
+      <div class="bar-labels"><span>CG total</span><span id="cgvalue">0</span></div>
+      <div class="bar-container"><div id="cgbar" class="bar low" style="width:0%"></div></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-labels"><span>IG ponderado</span><span id="igprom">0</span></div>
+      <div class="small-note">(IG no representado en barra — se muestra numérico)</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-labels"><span>IRE (CG / kg)</span><span id="iretext">0</span></div>
+      <div class="bar-container"><div id="irebar" class="bar low" style="width:0%"></div></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-labels"><span>VG (CG / Kcal *100)</span><span id="vgtext">0</span></div>
+      <div class="bar-container"><div id="vgbar" class="bar low" style="width:0%"></div></div>
+    </div>
+  </div>
     <div>IG ponderado: <span id="igprom">0</span></div>
     <div>IRE: <span id="iretext">0</span> | VG: <span id="vgtext">0</span></div>
   </div>
@@ -235,101 +262,21 @@ th{background:#eef7ef;color:var(--verde)}
 
   function addRowWithAlimento(name){ try{ const tbody=$('cuerpoTabla'); const tr=document.createElement('tr'); const tdName=document.createElement('td'); tdName.innerText=name; tdName.dataset.name=name; const tdQty=document.createElement('td'); const inp=document.createElement('input'); inp.type='number'; inp.value=100; inp.style.width='80px'; tdQty.appendChild(inp); const tdIG=document.createElement('td'); const tdCarbs=document.createElement('td'); const tdCG=document.createElement('td'); const tdKcal=document.createElement('td'); const tdQ=document.createElement('td'); const btn=document.createElement('button'); btn.className='small btn ghost'; btn.innerText='Quitar'; btn.onclick=()=>{ tr.remove(); recalcAll(); }; tdQ.appendChild(btn); tr.appendChild(tdName); tr.appendChild(tdQty); tr.appendChild(tdIG); tr.appendChild(tdCarbs); tr.appendChild(tdCG); tr.appendChild(tdKcal); tr.appendChild(tdQ); tbody.appendChild(tr); inp.addEventListener('input', recalcAll); recalcAll(); }catch(err){ console.error('addRow',err);} }
 
-  async function recalcAll(){ try{ const filas=Array.from(document.querySelectorAll('#cuerpoTabla tr')); let CG_total=0,kcal_total=0,carbs_total=0,ig_pes_num=0; for(const tr of filas){ const name=tr.children[0].dataset.name; const qty=Number(tr.querySelector('input').value)||0; const item = await idbGet('alimentos', name) || seedAlimentos.find(a=>a.name===name); if(!item){ tr.children[2].innerText='-'; tr.children[3].innerText='0'; tr.children[4].innerText='0'; tr.children[5].innerText='0'; continue; } const unitMl = !!item.density; const gramos = unitMl ? qty * (item.density || 1) : qty; const carbs_g = gramos * (item.carbs/100); const cg_line = (item.gi * carbs_g)/100; const kcal_line = gramos * (item.kcal/100); tr.children[2].innerText = item.gi; tr.children[3].innerText = round(carbs_g,2); tr.children[4].innerText = round(cg_line,2); tr.children[5].innerText = round(kcal_line,1); CG_total += cg_line; kcal_total += kcal_line; carbs_total += carbs_g; ig_pes_num += (item.gi * carbs_g); } const ig_ponderado = carbs_total ? (ig_pes_num / carbs_total) : 0; const perfil = JSON.parse(localStorage.getItem('perfilUsuario')||'null'); const peso = perfil ? Number(perfil.peso) : 70; const ire = peso ? (CG_total / peso) : 0; const vg = kcal_total ? ((CG_total / kcal_total) * 100) : 0; $('resultado').innerText = `CG total: ${round(CG_total,2)} | Kcal total: ${Math.round(kcal_total)}`; $('igprom').innerText = round(ig_ponderado,1); $('iretext').innerText = round(ire,2); $('vgtext').innerText = round(vg,2); }catch(err){ console.error('recalcAll',err); } }
-  function round(v,d=2){ return Math.round(v*Math.pow(10,d))/Math.pow(10,d); }
+  async function recalcAll(){ try{ const filas=Array.from(document.querySelectorAll('#cuerpoTabla tr')); let CG_total=0,kcal_total=0,carbs_total=0,ig_pes_num=0; for(const tr of filas){ const name=tr.children[0].dataset.name; const qty=Number(tr.querySelector('input').value)||0; const item = await idbGet('alimentos', name) || seedAlimentos.find(a=>a.name===name); if(!item){ tr.children[2].innerText='-'; tr.children[3].innerText='0'; tr.children[4].innerText='0'; tr.children[5].innerText='0'; continue; } const unitMl = !!item.density; const gramos = unitMl ? qty * (item.density || 1) : qty; const carbs_g = gramos * (item.carbs/100); const cg_line = (item.gi * carbs_g)/100; const kcal_line = gramos * (item.kcal/100); tr.children[2].innerText = item.gi; tr.children[3].innerText = round(carbs_g,2); tr.children[4].innerText = round(cg_line,2); tr.children[5].innerText = round(kcal_line,1); CG_total += cg_line; kcal_total += kcal_line; carbs_total += carbs_g; ig_pes_num += (item.gi * carbs_g); } const ig_ponderado = carbs_total ? (ig_pes_num / carbs_total) : 0; const perfil = JSON.parse(localStorage.getItem('perfilUsuario')||'null'); const peso = perfil ? Number(perfil.peso) : 70; const ire = peso ? (CG_total / peso) : 0; const vg = kcal_total ? ((CG_total / kcal_total) * 100) : 0; $('resultado').innerText = `CG total: ${round(CG_total,2)} | Kcal total: ${Math.round(kcal_total)}`; $('igprom').innerText = round(ig_ponderado,1); $('iretext').innerText = round(ire,2); $('vgtext').innerText = round(vg,2);
 
-  /* Seed & build */
-  function disableUI(){ ['addBtn','openModalBtn','scanBtn','exportCSV','exportPDF','saveRecipeBtn','loadRecipeBtn','clearBtn'].forEach(id=>{ const el=$(id); if(el) el.disabled=true; }); }
-  function enableUI(){ ['addBtn','openModalBtn','scanBtn','exportCSV','exportPDF','saveRecipeBtn','loadRecipeBtn','clearBtn'].forEach(id=>{ const el=$(id); if(el) el.disabled=false; }); }
+    // Bars: compute percentages and set classes
+    // CG bar: scale against 100g-equivalent of carbs impact (arbitrary cap at 100 for visualization)
+    const cgPercent = Math.min(100, (CG_total / 100) * 100); // CG_total 100 -> 100%
+    const cgBar = $('cgbar'); cgBar.style.width = cgPercent + '%'; $('cgvalue').innerText = round(CG_total,2);
+    cgBar.classList.remove('low','medium','high'); if(CG_total < 20) cgBar.classList.add('low'); else if(CG_total < 50) cgBar.classList.add('medium'); else cgBar.classList.add('high');
 
-  async function seedAndBuild(){ try{ await openDB(); const existing = await idbGetAll('alimentos'); if(!existing || existing.length===0){ for(const a of seedAlimentos) await idbPut('alimentos', a); } const all = await idbGetAll('alimentos'); trie = new Trie(); all.forEach(a=> trie.insert(a.name, a)); await rebuildRecipesSelect(); enableUI(); console.log('seed complete'); }catch(err){ console.error('seedAndBuild',err); enableUI(); } }
+    // IRE bar: thresholds (green <0.7, yellow <1.2, red >=1.2)
+    const irePercent = Math.min(100, (ire / 2) * 100); const ireBar = $('irebar'); ireBar.style.width = irePercent + '%'; ireBar.classList.remove('low','medium','high'); if(ire < 0.7) ireBar.classList.add('low'); else if(ire < 1.2) ireBar.classList.add('medium'); else ireBar.classList.add('high');
 
-  /* Profile */
-  function guardarPerfil(){ try{ const nombre=$('nombre').value.trim(); const sexo=$('sexo').value; const edad=Number($('edad').value)||0; const peso=Number($('peso').value)||0; const talla=Number($('talla').value)||0; if(!edad||!peso||!talla){ alert('Completa edad, peso y talla'); return; } const imc=(peso/Math.pow(talla/100,2)).toFixed(1); const tmb = sexo==='M' ? 66+(13.7*peso)+(5*talla)-(6.8*edad) : 655+(9.6*peso)+(1.8*talla)-(4.7*edad); const req=Math.round(tmb*1.5); const perfil={nombre,sexo,edad,peso,talla,imc,req}; localStorage.setItem('perfilUsuario',JSON.stringify(perfil)); mostrarPerfil(); alert('Perfil guardado'); }catch(err){ console.error('guardarPerfil',err); } }
-  function mostrarPerfil(){ const p=JSON.parse(localStorage.getItem('perfilUsuario')||'null'); const info=$('infoPerfil'); if(p) info.innerHTML = `${p.nombre||'Usuario'} — IMC: ${p.imc} — Req: ${p.req} kcal/día`; else info.innerText='Sin perfil guardado'; }
+    // VG bar: thresholds (green <10, yellow <25, red >=25)
+    const vgPercent = Math.min(100, vg); const vgBar = $('vgbar'); vgBar.style.width = vgPercent + '%'; vgBar.classList.remove('low','medium','high'); if(vg < 10) vgBar.classList.add('low'); else if(vg < 25) vgBar.classList.add('medium'); else vgBar.classList.add('high');
 
-  /* Recipes */
-  async function saveRecipe(){ try{ const name=prompt('Nombre plantilla'); if(!name) return; const filas=Array.from(document.querySelectorAll('#cuerpoTabla tr')).map(tr=>({name:tr.children[0].dataset.name, qty: Number(tr.querySelector('input').value)||0})); const id='r_'+Date.now(); await idbPut('recipes',{id,name,rows:filas,tipo:$('tipoComida').value}); alert('Plantilla guardada'); await rebuildRecipesSelect(); }catch(err){ console.error('saveRecipe',err); } }
-  async function rebuildRecipesSelect(){ try{ const sel=$('recipesSelect'); sel.innerHTML=''; sel.appendChild(new Option('-- recargas --','')); const all=await idbGetAll('recipes'); all.forEach(r=> sel.appendChild(new Option(r.name,r.id))); const list=$('recipes'); list.innerHTML=''; all.forEach(r=>{ const d=document.createElement('div'); d.style.display='flex'; d.style.justifyContent='space-between'; d.style.alignItems='center'; d.innerText = r.name + ' ('+ r.rows.length + ' items)'; const btn=document.createElement('button'); btn.className='small btn ghost'; btn.innerText='Cargar'; btn.onclick=()=> loadRecipeById(r.id); d.appendChild(btn); list.appendChild(d); }); }catch(err){ console.error('rebuildRecipesSelect',err); } }
-  async function loadRecipeById(id){ try{ const r=await idbGet('recipes', id); if(!r) return; $('tipoComida').value=r.tipo||'Comida'; $('cuerpoTabla').innerHTML=''; r.rows.forEach(row=> addRowWithAlimento(row.name)); setTimeout(()=>{ r.rows.forEach((row,i)=>{ const tr=document.querySelectorAll('#cuerpoTabla tr')[i]; if(tr) tr.querySelector('input').value=row.qty; }); recalcAll(); },60); }catch(err){ console.error('loadRecipeById',err); } }
-
-  /* EAN mapping & scanner */
-  async function saveEANMapping(code,name){ try{ await idbPut('ean',{code:String(code),name}); }catch(err){ console.warn('saveEANMapping',err); } }
-  async function getEANMapping(code){ try{ return await idbGet('ean',String(code)); }catch(err){ return null; } }
-
-  let scanning=false; const video=$('video'); const scanStatus=$('scanStatus'); let quaggaRunning=false;
-  function isSecureContextAllowed(){ try{ const host=location.hostname; const proto=location.protocol; return (proto==='https:'||host==='localhost'||host==='127.0.0.1'); }catch(e){ return false; } }
-
-  async function startScanner(){ if(!isSecureContextAllowed()){ alert('La cámara sólo funciona en HTTPS o localhost. Sirve la app con `npx serve`'); return; } if(scanning) return stopScanner(); try{ const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); video.srcObject=stream; video.style.display='block'; scanStatus.innerText='Buscando...'; scanning=true; detectFrame(); if(window.Quagga && !quaggaRunning){ try{ Quagga.init({ inputStream:{ type:'LiveStream', target: video }, decoder:{ readers:['ean_reader','ean_8_reader','code_128_reader','upc_reader'] } }, function(err){ if(!err){ Quagga.start(); quaggaRunning=true; Quagga.onDetected(function(data){ if(data && data.codeResult && data.codeResult.code){ handleScannedCode(data.codeResult.code); stopScanner(); } }); } else console.warn('Quagga init',err); }); }catch(err){ console.warn('Quagga err',err); } } }catch(err){ alert('No se pudo acceder a la cámara: '+(err && err.message?err.message:err)); } }
-  async function stopScanner(){ scanning=false; scanStatus.innerText='Inactivo'; video.style.display='none'; if(video.srcObject){ const tracks=video.srcObject.getTracks(); tracks.forEach(t=>t.stop()); video.srcObject=null; } if(window.Quagga && quaggaRunning){ try{ Quagga.stop(); }catch(e){} quaggaRunning=false; } }
-  async function detectFrame(){ if(!scanning) return; try{ if('BarcodeDetector' in window){ const detector=new BarcodeDetector({formats:['ean_13','ean_8','qr_code','code_128','upc_e','upc_a']}); const barcodes=await detector.detect(video); if(barcodes && barcodes.length){ const code=barcodes[0].rawValue; handleScannedCode(code); await stopScanner(); return; } } }catch(err){ console.warn('BarcodeDetector',err); } requestAnimationFrame(detectFrame); }
-
-  async function handleScannedCode(code){ try{ scanStatus.innerText='Escaneado: '+code; const mapped = await getEANMapping(code); if(mapped && mapped.name){ addRowWithAlimento(mapped.name); alert('Agregado desde mapeo local: '+mapped.name); return; } const url='https://es.openfoodfacts.org/api/v0/product/'+encodeURIComponent(code)+'.json'; const resp = await fetch(url).catch(()=>null); if(resp && resp.ok){ const data = await resp.json().catch(()=>null); if(data && data.product){ const p=data.product; const name=p.product_name||p.generic_name||('Producto '+code); const nutriments=p.nutriments||{}; const carbs100=nutriments.carbohydrates_100g||nutriments.carbohydrates||10; const kcal100=nutriments['energy-kcal_100g']||nutriments['energy-kcal']||nutriments['energy_100g']||100; const gi=50; const item={name,gi,carbs:carbs100,kcal:kcal100,density:null}; await idbPut('alimentos',item); trie.insert(item.name,item); await saveEANMapping(code,item.name); addRowWithAlimento(item.name); alert('Producto agregado desde OpenFoodFacts: '+item.name + "\nSe guardó mapeo local. Revisa valores."); return; } } window.open('https://es.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(code)+'&search_simple=1&action=process&json=1','_blank'); }catch(err){ console.warn('handleScannedCode',err); window.open('https://es.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(code),'_blank'); } }
-
-  /* Export CSV */
-  function exportCSV(){ try{ const rows=[['Alimento','Cantidad','IG','Carbs(g)','CG','Kcal']]; const filas = Array.from(document.querySelectorAll('#cuerpoTabla tr')); filas.forEach(tr=> rows.push([ tr.children[0].dataset.name, tr.querySelector('input').value||'', tr.children[2].innerText||'', tr.children[3].innerText||'', tr.children[4].innerText||'', tr.children[5].innerText||'' ])); const csv = rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='glucemica_'+new Date().toISOString().slice(0,10)+'.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }catch(err){ console.error('exportCSV',err); } }
-
-  /* Export PDF using jsPDF + autoTable */
-  async function exportPDF(){ try{
-    // build table data
-    const filas = Array.from(document.querySelectorAll('#cuerpoTabla tr'));
-    if(filas.length === 0){ alert('No hay filas para exportar'); return; }
-    const perfil = JSON.parse(localStorage.getItem('perfilUsuario')||'null');
-    const titulo = 'Calculadora Glucémica - Resumen';
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-    doc.setFontSize(14); doc.text(titulo, 14, 14);
-    doc.setFontSize(10);
-    const fecha = new Date().toLocaleString(); doc.text('Fecha: '+fecha, 14, 20);
-    if(perfil) doc.text(`Usuario: ${perfil.nombre||''} | IMC: ${perfil.imc} | Peso: ${perfil.peso||''} kg`, 14, 26);
-
-    // Prepare rows for autotable
-    const tableBody = filas.map(tr=>[ tr.children[0].dataset.name, tr.querySelector('input').value || '', tr.children[2].innerText || '', tr.children[3].innerText || '', tr.children[4].innerText || '', tr.children[5].innerText || '' ]);
-    doc.autoTable({ startY: 34, head: [['Alimento','Cantidad','IG','Carbs(g)','CG','Kcal']], body: tableBody, styles:{fontSize:8}, headStyles:{fillColor:[46,139,87]} });
-
-    // Summary block at end
-    const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 8 : 34 + (tableBody.length * 6) + 8;
-    const cgTotalText = $('resultado').innerText || '';
-    const igPromText = 'IG ponderado: ' + ($('igprom').innerText || '0');
-    const ireText = 'IRE: ' + ($('iretext').innerText || '0');
-    doc.setFontSize(10); doc.text(cgTotalText, 14, finalY);
-    doc.text(igPromText, 14, finalY + 6);
-    doc.text(ireText, 14, finalY + 12);
-
-    // Footer
-    const pageCount = doc.getNumberOfPages();
-    for(let i=1;i<=pageCount;i++){ doc.setPage(i); doc.setFontSize(8); doc.text(`powered by Sarmiento — Página ${i} de ${pageCount}`, 14, 290); }
-
-    doc.save('glucemica_resumen_'+new Date().toISOString().slice(0,10)+'.pdf');
-  }catch(err){ console.error('exportPDF',err); alert('Error exportando PDF: '+err.message); } }
-
-  /* Tests */
-  function basicTests(){ try{ console.log('basicTests...'); console.assert(typeof trie.searchPrefix==='function','Trie ok'); addRowWithAlimento('Pan blanco'); addRowWithAlimento('Leche entera'); const filas=document.querySelectorAll('#cuerpoTabla tr'); console.assert(filas.length>=2,'Rows added'); console.log('basicTests OK'); }catch(err){ console.error('basicTests',err); } }
-  async function asyncTests(){ try{ await saveEANMapping('0000000000000','Pan blanco'); const m=await getEANMapping('0000000000000'); console.assert(m && m.name==='Pan blanco','EAN roundtrip'); console.log('asyncTests OK'); }catch(err){ console.error('asyncTests',err); } }
-
-  /* Wiring events */
-  $('guardarPerfil').addEventListener('click', ()=> guardarPerfil());
-  $('cargarPerfil').addEventListener('click', ()=> mostrarPerfil());
-  $('addBtn').addEventListener('click', ()=>{ const q=$('buscador').value.trim(); if(!q) return openModal(); const res=trie.searchPrefix(q.toLowerCase()); if(res.length===1) addRowWithAlimento(res[0].name); else openModal(); });
-  $('openModalBtn').addEventListener('click', openModal);
-  $('modalSearch').addEventListener('input', e=>{ currentFilter=e.target.value.trim().toLowerCase(); modalPage=0; renderModal(); });
-  $('buscador').addEventListener('input', e=>{ currentFilter=e.target.value.trim().toLowerCase(); modalPage=0; renderModal(); });
-  $('scanBtn').addEventListener('click', ()=> startScanner());
-  $('exportCSV').addEventListener('click', exportCSV);
-  $('exportPDF').addEventListener('click', exportPDF);
-  $('clearBtn').addEventListener('click', ()=>{ $('cuerpoTabla').innerHTML=''; recalcAll(); });
-  $('saveRecipeBtn').addEventListener('click', ()=> saveRecipe());
-  $('loadRecipeBtn').addEventListener('click', ()=>{ const id=$('recipesSelect').value; if(id) loadRecipeById(id); });
-  $('modalOverlay').addEventListener('click', closeModal);
-  $('runTestsBtn').addEventListener('click', ()=>{ basicTests(); asyncTests(); alert('Tests ejecutados — mira la consola'); });
-
-  /* Manifest & SW (register only on http(s)) */
-  try{ const manifest={ name:'Calculadora Glucémica', short_name:'Glucemica', start_url:'.', display:'standalone', background_color:'#fff', description:'Calculadora glucemica' }; const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'}); const url=URL.createObjectURL(blob); const l=document.createElement('link'); l.rel='manifest'; l.href=url; document.head.appendChild(l); const swCode="self.addEventListener('install',e=>{self.skipWaiting();});self.addEventListener('fetch',function(e){});"; const swBlob=new Blob([swCode],{type:'application/javascript'}); const swURL=URL.createObjectURL(swBlob); if(location.protocol!=='file:' && 'serviceWorker' in navigator){ navigator.serviceWorker.register(swURL).then(()=>console.log('SW registered')).catch(e=>console.warn('SW error',e)); } else { $('localNotice').style.display='block'; $('localNotice').innerText='Estás en file:// — sirve via HTTP(S) para cámara y SW (p.ej. npx serve)'; } window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); const btn=$('installBtn'); btn.style.display='inline-block'; btn.onclick=async ()=>{ e.prompt(); const choice=await e.userChoice; console.log('install',choice); btn.style.display='none'; }; }); }catch(err){ console.warn('manifest error',err); }
-
-  /* Init */
-  (async function init(){ try{ disableUI(); await seedAndBuild(); mostrarPerfil(); setTimeout(()=>{ basicTests(); asyncTests(); },1200); }catch(err){ console.error('init',err); enableUI(); } })();
-
-})();
+  }catch(err){ console.error('recalcAll',err); } }();
 </script>
 </body>
 </html>
