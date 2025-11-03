@@ -1229,7 +1229,8 @@ td input {
 
                        /* Add row functions */
                          /* Add row functions */
-  function addRowWithAlimento(name) {
+   /* Add row functions - CORREGIDO */
+  async function addRowWithAlimento(name) {
     try {
       const tbody = $('cuerpoTabla');
       const tr = document.createElement('tr');
@@ -1244,7 +1245,7 @@ td input {
       inp.value = 100;
       inp.inputMode = 'decimal';
       inp.setAttribute('aria-label', 'Cantidad');
-      inp.dataset.name = name; // IMPORTANTE: identificador
+      inp.dataset.name = name;
       tdQty.appendChild(inp);
 
       const tdIG = document.createElement('td');
@@ -1272,17 +1273,19 @@ td input {
       tr.appendChild(tdQ);
       
       tbody.appendChild(tr);
-      inp.addEventListener('input', recalcAll);
       
-      // IMPORTANTE: Llamar recalcAll que actualiza todo
-      recalcAll();
+      // Event listener para cambios
+      inp.addEventListener('input', () => recalcAll());
+      
+      // IMPORTANTE: Esperar a que se calcule
+      await recalcAll();
       
     } catch (err) {
       console.error('addRow', err);
     }
   }
 
-  /* Render mobile cards - CORREGIDO */
+  /* Render mobile cards - OPTIMIZADO */
   async function renderMobileCards() {
     const container = $('tableCards');
     container.innerHTML = '';
@@ -1345,9 +1348,7 @@ td input {
       const input = card.querySelector('input');
       input.addEventListener('input', (e) => {
         const newQty = Number(e.target.value) || 0;
-        // Actualizar el input de la tabla oculta
         inputDesktop.value = newQty;
-        // Recalcular todo
         recalcAll();
       });
       
@@ -1355,7 +1356,6 @@ td input {
       const deleteBtn = card.querySelector('[data-action="delete"]');
       deleteBtn.addEventListener('click', () => {
         tr.remove();
-        card.remove();
         recalcAll();
       });
       
@@ -1363,18 +1363,40 @@ td input {
     }
   }
 
-  /* Recalculate all values - MEJORADO */
+  /* Recalculate all values - CORREGIDO COMPLETAMENTE */
   async function recalcAll() {
     try {
       const filas = Array.from(document.querySelectorAll('#cuerpoTabla tr'));
+      
+      // Si no hay filas, resetear todo
+      if (filas.length === 0) {
+        $('resultado').innerText = 'CG total: 0 | Kcal total: 0';
+        $('igprom').innerText = '0';
+        $('iretext').innerText = '0';
+        $('vgtext').innerText = '0';
+        $('cgvalue').innerText = '0';
+        $('cgbar').style.width = '0%';
+        $('irebar').style.width = '0%';
+        $('vgbar').style.width = '0%';
+        
+        if (window.innerWidth <= 768) {
+          renderMobileCards();
+        }
+        return;
+      }
+
       let CG_total = 0, kcal_total = 0, carbs_total = 0, ig_pes_num = 0;
 
+      // Procesar cada fila
       for (const tr of filas) {
         const name = tr.children[0].dataset.name;
         const qty = Number(tr.querySelector('input').value) || 0;
+        
+        // Buscar el alimento
         const item = await idbGet('alimentos', name) || seedAlimentos.find(a => a.name === name);
         
         if (!item) {
+          console.warn(`Alimento no encontrado: ${name}`);
           tr.children[2].innerText = '-';
           tr.children[3].innerText = '0';
           tr.children[4].innerText = '0';
@@ -1382,6 +1404,7 @@ td input {
           continue;
         }
 
+        // Calcular valores
         const unitMl = !!item.density;
         const gramos = unitMl ? qty * (item.density || 1) : qty;
         const carbs_g = gramos * (item.carbs / 100);
@@ -1394,6 +1417,12 @@ td input {
         tr.children[4].innerText = round(cg_line, 2);
         tr.children[5].innerText = round(kcal_line, 1);
 
+        // Acumular totales
+        CG_total += cg_line;
+        kcal_total += kcal_line;
+        carbs_total += carbs_g;
+        ig_pes_num += (item.gi * carbs_g);
+
         // Actualizar card mobile si existe
         const card = document.querySelector(`.food-card[data-name="${name}"]`);
         if (card) {
@@ -1404,34 +1433,32 @@ td input {
           if (cgField) cgField.innerText = round(cg_line, 2);
           if (kcalField) kcalField.innerText = round(kcal_line, 1);
         }
-
-        CG_total += cg_line;
-        kcal_total += kcal_line;
-        carbs_total += carbs_g;
-        ig_pes_num += (item.gi * carbs_g);
       }
 
-      const ig_ponderado = carbs_total ? (ig_pes_num / carbs_total) : 0;
+      // Calcular métricas
+      const ig_ponderado = carbs_total > 0 ? (ig_pes_num / carbs_total) : 0;
       const perfil = JSON.parse(localStorage.getItem('perfilUsuario') || 'null');
-      const peso = perfil ? Number(perfil.peso) : 70;
-      const ire = peso ? (CG_total / peso) : 0;
-      const vg = kcal_total ? ((CG_total / kcal_total) * 100) : 0;
+      const peso = perfil && perfil.peso ? Number(perfil.peso) : 70;
+      const ire = peso > 0 ? (CG_total / peso) : 0;
+      const vg = kcal_total > 0 ? ((CG_total / kcal_total) * 100) : 0;
 
+      // Actualizar resumen
       $('resultado').innerText = `CG total: ${round(CG_total, 2)} | Kcal total: ${Math.round(kcal_total)}`;
       $('igprom').innerText = round(ig_ponderado, 1);
       $('iretext').innerText = round(ire, 2);
       $('vgtext').innerText = round(vg, 2);
+      $('cgvalue').innerText = round(CG_total, 2);
 
-      // Update bars
+      // Actualizar barra CG
       const cgPercent = Math.min(100, (CG_total / 100) * 100);
       const cgBar = $('cgbar');
       cgBar.style.width = cgPercent + '%';
-      $('cgvalue').innerText = round(CG_total, 2);
       cgBar.classList.remove('low', 'medium', 'high');
       if (CG_total < 20) cgBar.classList.add('low');
       else if (CG_total < 50) cgBar.classList.add('medium');
       else cgBar.classList.add('high');
 
+      // Actualizar barra IRE
       const irePercent = Math.min(100, (ire / 2) * 100);
       const ireBar = $('irebar');
       ireBar.style.width = irePercent + '%';
@@ -1440,6 +1467,7 @@ td input {
       else if (ire < 1.2) ireBar.classList.add('medium');
       else ireBar.classList.add('high');
 
+      // Actualizar barra VG
       const vgPercent = Math.min(100, vg);
       const vgBar = $('vgbar');
       vgBar.style.width = vgPercent + '%';
@@ -1448,19 +1476,53 @@ td input {
       else if (vg < 25) vgBar.classList.add('medium');
       else vgBar.classList.add('high');
 
-      // IMPORTANTE: Renderizar cards en móvil si es necesario
+      // Renderizar cards en móvil si es necesario
       if (window.innerWidth <= 768) {
-        // Solo renderizar si no existen las cards o hay cambios estructurales
         const existingCards = document.querySelectorAll('.food-card').length;
         if (existingCards !== filas.length) {
-          renderMobileCards();
+          await renderMobileCards();
         }
       }
 
+      console.log('✓ Cálculos actualizados:', { CG_total, kcal_total, carbs_total, ig_ponderado, ire, vg });
+
     } catch (err) {
-      console.error('recalcAll', err);
+      console.error('Error en recalcAll:', err);
     }
   }
+
+  /* Search and add - CORREGIDO */
+  $('buscador').addEventListener('input', (e) => {
+    const query = e.target.value.trim();
+    if (query.length >= 2) {
+      const results = trie.searchPrefix(query);
+      console.log(`Encontrados ${results.length} resultados para "${query}"`);
+    }
+  });
+
+  $('addBtn').onclick = async () => {
+    const query = $('buscador').value.trim();
+    if (!query) {
+      alert('Escribe el nombre de un alimento');
+      return;
+    }
+    const results = trie.searchPrefix(query);
+    if (results.length === 0) {
+      alert('No se encontró el alimento');
+      return;
+    }
+    await addRowWithAlimento(results[0].name);
+    $('buscador').value = '';
+  };
+
+  $('openModalBtn').onclick = openModal;
+
+  $('modalSearch').addEventListener('input', (e) => {
+    currentFilter = e.target.value.trim();
+    modalPage = 0;
+    renderModal();
+  });
+
 
 
                        /* Profile functions */
