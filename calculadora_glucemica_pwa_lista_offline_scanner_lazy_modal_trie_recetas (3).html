@@ -3,9 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Calculadora Glucémica — PWA Web (300+ seed, PDF)</title>
+<title>Calculadora Glucémica — PWA Web (320+ seed, PDF)</title>
 <meta name="description" content="Calculadora glucémica PWA — perfil, modal selector, scanner, EAN mapping, export CSV/PDF" />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E🍞%3C/text%3E%3C/svg%3E">
+<!-- Fav: SVG properly URL-encoded to avoid parser issues -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%3E%3Ctext%20y='14'%20font-size='14'%3E%F0%9F%8D%9E%3C/text%3E%3C/svg%3E">
 
 <!-- Libraries -->
 <script src="https://unpkg.com/quagga@0.12.1/dist/quagga.min.js"></script>
@@ -44,7 +45,7 @@ th{background:#eef7ef;color:var(--verde)}
   <div class="header">
     <div>
       <div class="title">Calculadora Glucémica — PWA Web</div>
-      <div style="font-size:0.9rem;color:#666">Ahora con seed 320+ y export a PDF (jsPDF)</div>
+      <div style="font-size:0.9rem;color:#666">Seed ampliada (320+), export PDF y correcciones</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
       <button id="installBtn" class="btn small" style="display:none">Instalar</button>
@@ -263,12 +264,10 @@ th{background:#eef7ef;color:var(--verde)}
   async function stopScanner(){ scanning=false; scanStatus.innerText='Inactivo'; video.style.display='none'; if(video.srcObject){ const tracks=video.srcObject.getTracks(); tracks.forEach(t=>t.stop()); video.srcObject=null; } if(window.Quagga && quaggaRunning){ try{ Quagga.stop(); }catch(e){} quaggaRunning=false; } }
   async function detectFrame(){ if(!scanning) return; try{ if('BarcodeDetector' in window){ const detector=new BarcodeDetector({formats:['ean_13','ean_8','qr_code','code_128','upc_e','upc_a']}); const barcodes=await detector.detect(video); if(barcodes && barcodes.length){ const code=barcodes[0].rawValue; handleScannedCode(code); await stopScanner(); return; } } }catch(err){ console.warn('BarcodeDetector',err); } requestAnimationFrame(detectFrame); }
 
-  async function handleScannedCode(code){ try{ scanStatus.innerText='Escaneado: '+code; const mapped = await getEANMapping(code); if(mapped && mapped.name){ addRowWithAlimento(mapped.name); alert('Agregado desde mapeo local: '+mapped.name); return; } const url='https://es.openfoodfacts.org/api/v0/product/'+encodeURIComponent(code)+'.json'; const resp = await fetch(url).catch(()=>null); if(resp && resp.ok){ const data = await resp.json().catch(()=>null); if(data && data.product){ const p=data.product; const name=p.product_name||p.generic_name||('Producto '+code); const nutriments=p.nutriments||{}; const carbs100=nutriments.carbohydrates_100g||nutriments.carbohydrates||10; const kcal100=nutriments['energy-kcal_100g']||nutriments['energy-kcal']||nutriments['energy_100g']||100; const gi=50; const item={name,gi,carbs:carbs100,kcal:kcal100,density:null}; await idbPut('alimentos',item); trie.insert(item.name,item); await saveEANMapping(code,item.name); addRowWithAlimento(item.name); alert('Producto agregado desde OpenFoodFacts: '+item.name+'
-Se guardó mapeo local. Revisa valores.'); return; } } window.open('https://es.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(code)+'&search_simple=1&action=process&json=1','_blank'); }catch(err){ console.warn('handleScannedCode',err); window.open('https://es.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(code),'_blank'); } }
+  async function handleScannedCode(code){ try{ scanStatus.innerText='Escaneado: '+code; const mapped = await getEANMapping(code); if(mapped && mapped.name){ addRowWithAlimento(mapped.name); alert('Agregado desde mapeo local: '+mapped.name); return; } const url='https://es.openfoodfacts.org/api/v0/product/'+encodeURIComponent(code)+'.json'; const resp = await fetch(url).catch(()=>null); if(resp && resp.ok){ const data = await resp.json().catch(()=>null); if(data && data.product){ const p=data.product; const name=p.product_name||p.generic_name||('Producto '+code); const nutriments=p.nutriments||{}; const carbs100=nutriments.carbohydrates_100g||nutriments.carbohydrates||10; const kcal100=nutriments['energy-kcal_100g']||nutriments['energy-kcal']||nutriments['energy_100g']||100; const gi=50; const item={name,gi,carbs:carbs100,kcal:kcal100,density:null}; await idbPut('alimentos',item); trie.insert(item.name,item); await saveEANMapping(code,item.name); addRowWithAlimento(item.name); alert('Producto agregado desde OpenFoodFacts: '+item.name + "\nSe guardó mapeo local. Revisa valores."); return; } } window.open('https://es.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(code)+'&search_simple=1&action=process&json=1','_blank'); }catch(err){ console.warn('handleScannedCode',err); window.open('https://es.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(code),'_blank'); } }
 
   /* Export CSV */
-  function exportCSV(){ try{ const rows=[['Alimento','Cantidad','IG','Carbs(g)','CG','Kcal']]; const filas = Array.from(document.querySelectorAll('#cuerpoTabla tr')); filas.forEach(tr=> rows.push([ tr.children[0].dataset.name, tr.querySelector('input').value||'', tr.children[2].innerText||'', tr.children[3].innerText||'', tr.children[4].innerText||'', tr.children[5].innerText||'' ])); const csv = rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('
-'); const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='glucemica_'+new Date().toISOString().slice(0,10)+'.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }catch(err){ console.error('exportCSV',err); } }
+  function exportCSV(){ try{ const rows=[['Alimento','Cantidad','IG','Carbs(g)','CG','Kcal']]; const filas = Array.from(document.querySelectorAll('#cuerpoTabla tr')); filas.forEach(tr=> rows.push([ tr.children[0].dataset.name, tr.querySelector('input').value||'', tr.children[2].innerText||'', tr.children[3].innerText||'', tr.children[4].innerText||'', tr.children[5].innerText||'' ])); const csv = rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='glucemica_'+new Date().toISOString().slice(0,10)+'.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }catch(err){ console.error('exportCSV',err); } }
 
   /* Export PDF using jsPDF + autoTable */
   async function exportPDF(){ try{
