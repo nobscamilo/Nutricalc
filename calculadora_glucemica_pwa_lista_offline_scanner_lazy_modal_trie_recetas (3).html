@@ -1228,206 +1228,240 @@ td input {
                        }
 
                        /* Add row functions */
-                       function addRowWithAlimento(name) {
-                         try {
-                           const tbody = $('cuerpoTabla');
-                           const tr = document.createElement('tr');
-                           
-                           const tdName = document.createElement('td');
-                           tdName.innerText = name;
-                           tdName.dataset.name = name;
+                         /* Add row functions */
+  function addRowWithAlimento(name) {
+    try {
+      const tbody = $('cuerpoTabla');
+      const tr = document.createElement('tr');
+      
+      const tdName = document.createElement('td');
+      tdName.innerText = name;
+      tdName.dataset.name = name;
 
-                           const tdQty = document.createElement('td');
-                           const inp = document.createElement('input');
-                           inp.type = 'number';
-                           inp.value = 100;
-                           inp.inputMode = 'decimal';
-                           inp.setAttribute('aria-label', 'Cantidad');
-                           tdQty.appendChild(inp);
+      const tdQty = document.createElement('td');
+      const inp = document.createElement('input');
+      inp.type = 'number';
+      inp.value = 100;
+      inp.inputMode = 'decimal';
+      inp.setAttribute('aria-label', 'Cantidad');
+      inp.dataset.name = name; // IMPORTANTE: identificador
+      tdQty.appendChild(inp);
 
-                           const tdIG = document.createElement('td');
-                           const tdCarbs = document.createElement('td');
-                           const tdCG = document.createElement('td');
-                           const tdKcal = document.createElement('td');
-                           
-                           const tdQ = document.createElement('td');
-                           const btn = document.createElement('button');
-                           btn.className = 'btn small danger';
-                           btn.innerText = '✕';
-                           btn.setAttribute('aria-label', 'Eliminar');
-                           btn.onclick = () => {
-                             tr.remove();
-                             recalcAll();
-                           };
-                           tdQ.appendChild(btn);
+      const tdIG = document.createElement('td');
+      const tdCarbs = document.createElement('td');
+      const tdCG = document.createElement('td');
+      const tdKcal = document.createElement('td');
+      
+      const tdQ = document.createElement('td');
+      const btn = document.createElement('button');
+      btn.className = 'btn small danger';
+      btn.innerText = '✕';
+      btn.setAttribute('aria-label', 'Eliminar');
+      btn.onclick = () => {
+        tr.remove();
+        recalcAll();
+      };
+      tdQ.appendChild(btn);
 
-                           tr.appendChild(tdName);
-                           tr.appendChild(tdQty);
-                           tr.appendChild(tdIG);
-                           tr.appendChild(tdCarbs);
-                           tr.appendChild(tdCG);
-                           tr.appendChild(tdKcal);
-                           tr.appendChild(tdQ);
-                           
-                           tbody.appendChild(tr);
-                           inp.addEventListener('input', recalcAll);
-                           
-                           recalcAll();
-                         } catch (err) {
-                           console.error('addRow', err);
-                         }
-                       }
+      tr.appendChild(tdName);
+      tr.appendChild(tdQty);
+      tr.appendChild(tdIG);
+      tr.appendChild(tdCarbs);
+      tr.appendChild(tdCG);
+      tr.appendChild(tdKcal);
+      tr.appendChild(tdQ);
+      
+      tbody.appendChild(tr);
+      inp.addEventListener('input', recalcAll);
+      
+      // IMPORTANTE: Llamar recalcAll que actualiza todo
+      recalcAll();
+      
+    } catch (err) {
+      console.error('addRow', err);
+    }
+  }
 
-                       /* Render mobile cards */
-                       function renderMobileCards() {
-                         const container = $('tableCards');
-                         container.innerHTML = '';
-                         
-                         const filas = Array.from(document.querySelectorAll('#cuerpoTabla tr'));
-                         
-                         filas.forEach(async (tr) => {
-                           const name = tr.children[0].dataset.name;
-                           const qty = Number(tr.querySelector('input').value) || 0;
-                           
-                           const item = await idbGet('alimentos', name) || seedAlimentos.find(a => a.name === name);
-                           if (!item) return;
+  /* Render mobile cards - CORREGIDO */
+  async function renderMobileCards() {
+    const container = $('tableCards');
+    container.innerHTML = '';
+    
+    const filas = Array.from(document.querySelectorAll('#cuerpoTabla tr'));
+    
+    if (filas.length === 0) {
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:#7f8c8d">No hay alimentos agregados</div>';
+      return;
+    }
+    
+    for (const tr of filas) {
+      const name = tr.children[0].dataset.name;
+      const inputDesktop = tr.querySelector('input');
+      const qty = Number(inputDesktop.value) || 0;
+      
+      const item = await idbGet('alimentos', name) || seedAlimentos.find(a => a.name === name);
+      if (!item) continue;
 
-                           const unitMl = !!item.density;
-                           const gramos = unitMl ? qty * (item.density || 1) : qty;
-                           const carbs_g = gramos * (item.carbs / 100);
-                           const cg_line = (item.gi * carbs_g) / 100;
-                           const kcal_line = gramos * (item.kcal / 100);
+      const unitMl = !!item.density;
+      const gramos = unitMl ? qty * (item.density || 1) : qty;
+      const carbs_g = gramos * (item.carbs / 100);
+      const cg_line = (item.gi * carbs_g) / 100;
+      const kcal_line = gramos * (item.kcal / 100);
 
-                           const card = document.createElement('div');
-                           card.className = 'food-card';
-                           
-                           card.innerHTML = `
-                             <div class="food-card-header">
-                               <div class="food-card-name">${name}</div>
-                               <button class="btn small danger" onclick="this.closest('.food-card').remove(); recalcAll();">✕</button>
-                             </div>
-                             <div class="food-card-body">
-                               <div class="food-card-field">
-                                 <div class="food-card-label">Cantidad (${unitMl ? 'ml' : 'g'})</div>
-                                 <input type="number" class="food-card-input" value="${qty}" data-name="${name}" inputmode="decimal">
-                               </div>
-                               <div class="food-card-field">
-                                 <div class="food-card-label">IG</div>
-                                 <div class="food-card-value">${item.gi}</div>
-                               </div>
-                               <div class="food-card-field">
-                                 <div class="food-card-label">Carbs (g)</div>
-                                 <div class="food-card-value">${round(carbs_g, 2)}</div>
-                               </div>
-                               <div class="food-card-field">
-                                 <div class="food-card-label">CG</div>
-                                 <div class="food-card-value">${round(cg_line, 2)}</div>
-                               </div>
-                               <div class="food-card-field">
-                                 <div class="food-card-label">Kcal</div>
-                                 <div class="food-card-value">${round(kcal_line, 1)}</div>
-                               </div>
-                             </div>
-                           `;
-                           
-                           const input = card.querySelector('input');
-                           input.addEventListener('input', (e) => {
-                             const newQty = Number(e.target.value) || 0;
-                             const correspondingTr = Array.from(document.querySelectorAll('#cuerpoTabla tr')).find(
-                               row => row.children[0].dataset.name === name
-                             );
-                             if (correspondingTr) {
-                               correspondingTr.querySelector('input').value = newQty;
-                             }
-                             recalcAll();
-                           });
-                           
-                           container.appendChild(card);
-                         });
-                       }
+      const card = document.createElement('div');
+      card.className = 'food-card';
+      card.dataset.name = name;
+      
+      card.innerHTML = `
+        <div class="food-card-header">
+          <div class="food-card-name">${name}</div>
+          <button class="btn small danger" data-action="delete">✕</button>
+        </div>
+        <div class="food-card-body">
+          <div class="food-card-field">
+            <div class="food-card-label">Cantidad (${unitMl ? 'ml' : 'g'})</div>
+            <input type="number" class="food-card-input" value="${qty}" data-name="${name}" inputmode="decimal">
+          </div>
+          <div class="food-card-field">
+            <div class="food-card-label">IG</div>
+            <div class="food-card-value">${item.gi}</div>
+          </div>
+          <div class="food-card-field">
+            <div class="food-card-label">Carbs (g)</div>
+            <div class="food-card-value" data-field="carbs">${round(carbs_g, 2)}</div>
+          </div>
+          <div class="food-card-field">
+            <div class="food-card-label">CG</div>
+            <div class="food-card-value" data-field="cg">${round(cg_line, 2)}</div>
+          </div>
+          <div class="food-card-field">
+            <div class="food-card-label">Kcal</div>
+            <div class="food-card-value" data-field="kcal">${round(kcal_line, 1)}</div>
+          </div>
+        </div>
+      `;
+      
+      // Event listener para el input
+      const input = card.querySelector('input');
+      input.addEventListener('input', (e) => {
+        const newQty = Number(e.target.value) || 0;
+        // Actualizar el input de la tabla oculta
+        inputDesktop.value = newQty;
+        // Recalcular todo
+        recalcAll();
+      });
+      
+      // Event listener para el botón eliminar
+      const deleteBtn = card.querySelector('[data-action="delete"]');
+      deleteBtn.addEventListener('click', () => {
+        tr.remove();
+        card.remove();
+        recalcAll();
+      });
+      
+      container.appendChild(card);
+    }
+  }
 
-                       /* Recalculate all values */
-                       async function recalcAll() {
-                         try {
-                           const filas = Array.from(document.querySelectorAll('#cuerpoTabla tr'));
-                           let CG_total = 0, kcal_total = 0, carbs_total = 0, ig_pes_num = 0;
+  /* Recalculate all values - MEJORADO */
+  async function recalcAll() {
+    try {
+      const filas = Array.from(document.querySelectorAll('#cuerpoTabla tr'));
+      let CG_total = 0, kcal_total = 0, carbs_total = 0, ig_pes_num = 0;
 
-                           for (const tr of filas) {
-                             const name = tr.children[0].dataset.name;
-                             const qty = Number(tr.querySelector('input').value) || 0;
-                             const item = await idbGet('alimentos', name) || seedAlimentos.find(a => a.name === name);
-                             
-                             if (!item) {
-                               tr.children[2].innerText = '-';
-                               tr.children[3].innerText = '0';
-                               tr.children[4].innerText = '0';
-                               tr.children[5].innerText = '0';
-                               continue;
-                             }
+      for (const tr of filas) {
+        const name = tr.children[0].dataset.name;
+        const qty = Number(tr.querySelector('input').value) || 0;
+        const item = await idbGet('alimentos', name) || seedAlimentos.find(a => a.name === name);
+        
+        if (!item) {
+          tr.children[2].innerText = '-';
+          tr.children[3].innerText = '0';
+          tr.children[4].innerText = '0';
+          tr.children[5].innerText = '0';
+          continue;
+        }
 
-                             const unitMl = !!item.density;
-                             const gramos = unitMl ? qty * (item.density || 1) : qty;
-                             const carbs_g = gramos * (item.carbs / 100);
-                             const cg_line = (item.gi * carbs_g) / 100;
-                             const kcal_line = gramos * (item.kcal / 100);
+        const unitMl = !!item.density;
+        const gramos = unitMl ? qty * (item.density || 1) : qty;
+        const carbs_g = gramos * (item.carbs / 100);
+        const cg_line = (item.gi * carbs_g) / 100;
+        const kcal_line = gramos * (item.kcal / 100);
 
-                             tr.children[2].innerText = item.gi;
-                             tr.children[3].innerText = round(carbs_g, 2);
-                             tr.children[4].innerText = round(cg_line, 2);
-                             tr.children[5].innerText = round(kcal_line, 1);
+        // Actualizar tabla desktop
+        tr.children[2].innerText = item.gi;
+        tr.children[3].innerText = round(carbs_g, 2);
+        tr.children[4].innerText = round(cg_line, 2);
+        tr.children[5].innerText = round(kcal_line, 1);
 
-                             CG_total += cg_line;
-                             kcal_total += kcal_line;
-                             carbs_total += carbs_g;
-                             ig_pes_num += (item.gi * carbs_g);
-                           }
+        // Actualizar card mobile si existe
+        const card = document.querySelector(`.food-card[data-name="${name}"]`);
+        if (card) {
+          const carbsField = card.querySelector('[data-field="carbs"]');
+          const cgField = card.querySelector('[data-field="cg"]');
+          const kcalField = card.querySelector('[data-field="kcal"]');
+          if (carbsField) carbsField.innerText = round(carbs_g, 2);
+          if (cgField) cgField.innerText = round(cg_line, 2);
+          if (kcalField) kcalField.innerText = round(kcal_line, 1);
+        }
 
-                           const ig_ponderado = carbs_total ? (ig_pes_num / carbs_total) : 0;
-                           const perfil = JSON.parse(localStorage.getItem('perfilUsuario') || 'null');
-                           const peso = perfil ? Number(perfil.peso) : 70;
-                           const ire = peso ? (CG_total / peso) : 0;
-                           const vg = kcal_total ? ((CG_total / kcal_total) * 100) : 0;
+        CG_total += cg_line;
+        kcal_total += kcal_line;
+        carbs_total += carbs_g;
+        ig_pes_num += (item.gi * carbs_g);
+      }
 
-                           $('resultado').innerText = `CG total: ${round(CG_total, 2)} | Kcal total: ${Math.round(kcal_total)}`;
-                           $('igprom').innerText = round(ig_ponderado, 1);
-                           $('iretext').innerText = round(ire, 2);
-                           $('vgtext').innerText = round(vg, 2);
+      const ig_ponderado = carbs_total ? (ig_pes_num / carbs_total) : 0;
+      const perfil = JSON.parse(localStorage.getItem('perfilUsuario') || 'null');
+      const peso = perfil ? Number(perfil.peso) : 70;
+      const ire = peso ? (CG_total / peso) : 0;
+      const vg = kcal_total ? ((CG_total / kcal_total) * 100) : 0;
 
-                           // Update bars
-                           const cgPercent = Math.min(100, (CG_total / 100) * 100);
-                           const cgBar = $('cgbar');
-                           cgBar.style.width = cgPercent + '%';
-                           $('cgvalue').innerText = round(CG_total, 2);
-                           cgBar.classList.remove('low', 'medium', 'high');
-                           if (CG_total < 20) cgBar.classList.add('low');
-                           else if (CG_total < 50) cgBar.classList.add('medium');
-                           else cgBar.classList.add('high');
+      $('resultado').innerText = `CG total: ${round(CG_total, 2)} | Kcal total: ${Math.round(kcal_total)}`;
+      $('igprom').innerText = round(ig_ponderado, 1);
+      $('iretext').innerText = round(ire, 2);
+      $('vgtext').innerText = round(vg, 2);
 
-                           const irePercent = Math.min(100, (ire / 2) * 100);
-                           const ireBar = $('irebar');
-                           ireBar.style.width = irePercent + '%';
-                           ireBar.classList.remove('low', 'medium', 'high');
-                           if (ire < 0.7) ireBar.classList.add('low');
-                           else if (ire < 1.2) ireBar.classList.add('medium');
-                           else ireBar.classList.add('high');
+      // Update bars
+      const cgPercent = Math.min(100, (CG_total / 100) * 100);
+      const cgBar = $('cgbar');
+      cgBar.style.width = cgPercent + '%';
+      $('cgvalue').innerText = round(CG_total, 2);
+      cgBar.classList.remove('low', 'medium', 'high');
+      if (CG_total < 20) cgBar.classList.add('low');
+      else if (CG_total < 50) cgBar.classList.add('medium');
+      else cgBar.classList.add('high');
 
-                           const vgPercent = Math.min(100, vg);
-                           const vgBar = $('vgbar');
-                           vgBar.style.width = vgPercent + '%';
-                           vgBar.classList.remove('low', 'medium', 'high');
-                           if (vg < 10) vgBar.classList.add('low');
-                           else if (vg < 25) vgBar.classList.add('medium');
-                           else vgBar.classList.add('high');
+      const irePercent = Math.min(100, (ire / 2) * 100);
+      const ireBar = $('irebar');
+      ireBar.style.width = irePercent + '%';
+      ireBar.classList.remove('low', 'medium', 'high');
+      if (ire < 0.7) ireBar.classList.add('low');
+      else if (ire < 1.2) ireBar.classList.add('medium');
+      else ireBar.classList.add('high');
 
-                           // Update mobile cards if visible
-                           if (window.innerWidth <= 768) {
-                             renderMobileCards();
-                           }
+      const vgPercent = Math.min(100, vg);
+      const vgBar = $('vgbar');
+      vgBar.style.width = vgPercent + '%';
+      vgBar.classList.remove('low', 'medium', 'high');
+      if (vg < 10) vgBar.classList.add('low');
+      else if (vg < 25) vgBar.classList.add('medium');
+      else vgBar.classList.add('high');
 
-                         } catch (err) {
-                           console.error('recalcAll', err);
-                         }
-                       }
+      // IMPORTANTE: Renderizar cards en móvil si es necesario
+      if (window.innerWidth <= 768) {
+        // Solo renderizar si no existen las cards o hay cambios estructurales
+        const existingCards = document.querySelectorAll('.food-card').length;
+        if (existingCards !== filas.length) {
+          renderMobileCards();
+        }
+      }
+
+    } catch (err) {
+      console.error('recalcAll', err);
+    }
+  }
+
 
                        /* Profile functions */
                        $('guardarPerfil').onclick = () => {
