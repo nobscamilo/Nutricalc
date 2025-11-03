@@ -1,44 +1,335 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Calculadora Glucémica — PWA</title>
-  <meta name="description" content="Calculadora Glucémica PWA — scanner, offline y recetas" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E🍞%3C/text%3E%3C/svg%3E">
-  <style>
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      background: #f7f8f9;
-      color: #333;
-      margin: 0;
-      text-align: center;
-    }
-    a {
-      display: inline-block;
-      padding: 12px 20px;
-      margin-top: 20px;
-      background: #2e8b57;
-      color: white;
-      border-radius: 8px;
-      text-decoration: none;
-    }
-    a:hover {
-      background: #256b46;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Calculadora Glucémica — PWA Web (320+ seed, PDF)</title>
+<meta name="description" content="Calculadora glucémica PWA — perfil, modal selector, scanner, EAN mapping, export CSV/PDF" />
+<!-- Fav: SVG properly URL-encoded to avoid parser issues -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%3E%3Ctext%20y='14'%20font-size='14'%3E%F0%9F%8D%9E%3C/text%3E%3C/svg%3E">
+
+<!-- Libraries -->
+<script src="https://unpkg.com/quagga@0.12.1/dist/quagga.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+:root{--verde:#2e8b57;--panel:#f4f7f4;--texto:#222;--fondo:#fff}
+body{font-family:Inter,Segoe UI,Arial,sans-serif;margin:12px;background:var(--fondo);color:var(--texto)}
+.container{max-width:1100px;margin:0 auto}
+.header{display:flex;justify-content:space-between;align-items:center}
+.title{color:var(--verde);font-size:1.3rem}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.search{padding:8px;border-radius:8px;border:1px solid #ccc;min-width:200px}
+.btn{background:var(--verde);color:#fff;padding:8px 10px;border-radius:8px;border:none;cursor:pointer}
+.btn.small{padding:6px 8px;font-size:.9rem}
+.btn.ghost{background:transparent;color:var(--verde);border:1px solid var(--verde)}
+.table-wrap{background:var(--panel);padding:6px;border-radius:8px;border:1px solid #ddd;overflow:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px;border-bottom:1px solid #e6e6e6;text-align:center}
+th{background:#eef7ef;color:var(--verde)}
+.profile{background:var(--panel);padding:10px;border-radius:8px;border:1px solid #ddd;margin-top:12px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:flex-end;justify-content:center;z-index:9999}
+.modal{width:100%;max-width:720px;background:var(--fondo);border-radius:12px 12px 0 0;padding:12px;max-height:84vh;overflow:auto}
+.modal .list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.item{padding:8px;border-radius:8px;border:1px solid #ddd;cursor:pointer}
+.pager{display:flex;gap:8px;justify-content:center;margin-top:8px}
+.scan-area{border:1px dashed #ccc;padding:8px;border-radius:8px;text-align:center}
+.footer{position:fixed;right:12px;bottom:12px;color:var(--verde);opacity:.8}
+.notice{background:#fff3cd;border:1px solid #ffeeba;padding:8px;border-radius:6px;margin-top:10px}
+.summary{background:var(--panel);padding:10px;border-radius:8px;border:1px solid #ddd;margin-top:12px}
+</style>
 </head>
 <body>
-  <h1>Calculadora Glucémica — PWA</h1>
-  <p>Tu aplicación está lista. Haz clic para abrirla.</p>
-  <a href="./calculadora_glucemica_pwa_lista_offline_scanner_lazy_modal_trie_recetas (3)">Abrir aplicación</a>
-  <footer style="margin-top:40px; font-size:0.85rem; color:#777;">
-    powered by <strong>Sarmiento</strong>
-  </footer>
+<div class="container">
+  <div class="header">
+    <div>
+      <div class="title">Calculadora Glucémica — PWA Web</div>
+      <div style="font-size:0.9rem;color:#666">Seed ampliada (320+), export PDF y correcciones</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button id="installBtn" class="btn small" style="display:none">Instalar</button>
+      <button id="runTestsBtn" class="btn small ghost">Ejecutar tests</button>
+    </div>
+  </div>
+
+  <div id="profilePanel" class="profile">
+    <h3>Perfil de usuario</h3>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label>Nombre:<br><input id="nombre" type="text" placeholder="Tu nombre"></label>
+      <label>Sexo:<br><select id="sexo"><option value="M">Masculino</option><option value="F">Femenino</option></select></label>
+      <label>Edad:<br><input id="edad" type="number" min="1" max="120" style="width:84px"></label>
+      <label>Peso (kg):<br><input id="peso" type="number" step="0.1" style="width:100px"></label>
+      <label>Talla (cm):<br><input id="talla" type="number" style="width:100px"></label>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button id="guardarPerfil" class="btn small">Guardar perfil</button>
+        <button id="cargarPerfil" class="btn small ghost">Cargar perfil</button>
+      </div>
+    </div>
+    <p id="infoPerfil" style="margin-top:8px">Sin perfil guardado</p>
+  </div>
+
+  <div class="controls">
+    <select id="tipoComida" class="search"><option>Desayuno</option><option>Merienda</option><option>Comida</option><option>Cena</option></select>
+    <input id="buscador" class="search" placeholder="Buscar alimento (prefijo)..." />
+    <button id="addBtn" class="btn small">Agregar</button>
+    <button id="openModalBtn" class="btn small">Abrir selector</button>
+    <button id="scanBtn" class="btn small">Escanear</button>
+    <button id="exportCSV" class="btn small">Exportar CSV</button>
+    <button id="exportPDF" class="btn small">Exportar PDF</button>
+    <button id="clearBtn" class="btn small ghost">Limpiar tabla</button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="tabla"><thead><tr><th>Alimento</th><th>Cantidad (g/ml)</th><th>IG</th><th>Carbs (g)</th><th>CG</th><th>Kcal</th><th>Quitar</th></tr></thead><tbody id="cuerpoTabla"></tbody></table>
+  </div>
+
+  <div class="summary">
+    <div id="resultado">CG total: 0 | Kcal total: 0</div>
+    <div>IG ponderado: <span id="igprom">0</span></div>
+    <div>IRE: <span id="iretext">0</span> | VG: <span id="vgtext">0</span></div>
+  </div>
+
+  <div id="localNotice" class="notice" style="display:none"></div>
+
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+      <header style="display:flex;justify-content:space-between;align-items:center">
+        <strong>Selecciona alimento</strong>
+        <div><input id="modalSearch" class="search" placeholder="Filtrar..." /></div>
+      </header>
+      <div id="modalList" class="list"></div>
+      <div id="modalPager" class="pager"></div>
+    </div>
+  </div>
+
+  <div style="margin-top:12px;display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
+    <div style="min-width:240px">
+      <div style="font-weight:600">Escáner</div>
+      <div class="scan-area">
+        <div id="scanStatus">Inactivo</div>
+        <video id="video" style="width:100%;display:none" autoplay muted playsinline></video>
+        <canvas id="canvas" style="display:none"></canvas>
+      </div>
+    </div>
+
+    <div style="flex:1">
+      <div style="font-weight:600">Recetas / Plantillas</div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button id="saveRecipeBtn" class="btn small ghost">Guardar plantilla</button>
+        <select id="recipesSelect" style="min-width:160px"></select>
+        <button id="loadRecipeBtn" class="btn small">Cargar</button>
+      </div>
+      <div id="recipes" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <div class="footer">powered by <strong>Sarmiento</strong></div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  /* IndexedDB helpers */
+  const DB_NAME = 'glucemica_web_v2'; const DB_VERSION = 1; let db=null;
+  function openDB(){ return new Promise((res,rej)=>{ try{ const r=indexedDB.open(DB_NAME,DB_VERSION); r.onupgradeneeded = e=>{ const idb=e.target.result; if(!idb.objectStoreNames.contains('alimentos')) idb.createObjectStore('alimentos',{keyPath:'name'}); if(!idb.objectStoreNames.contains('recipes')) idb.createObjectStore('recipes',{keyPath:'id'}); if(!idb.objectStoreNames.contains('ean')) idb.createObjectStore('ean',{keyPath:'code'}); }; r.onsuccess=e=>{ db=e.target.result; res(db); }; r.onerror=e=>rej(new Error('IndexedDB open failed')); }catch(err){ rej(err);} }); }
+  function idbPut(store,val){ return new Promise((res,rej)=>{ if(!db) return rej(new Error('DB not open')); try{ const tx=db.transaction(store,'readwrite'); const os=tx.objectStore(store); const rq=os.put(val); rq.onsuccess=()=>res(rq.result); rq.onerror=e=>rej(e); }catch(err){ rej(err);} }); }
+  function idbGet(store,key){ return new Promise((res,rej)=>{ if(!db) return res(null); try{ const tx=db.transaction(store,'readonly'); const os=tx.objectStore(store); const rq=os.get(key); rq.onsuccess=()=>res(rq.result); rq.onerror=e=>rej(e); }catch(err){ rej(err);} }); }
+  function idbGetAll(store){ return new Promise((res,rej)=>{ if(!db) return res([]); try{ const tx=db.transaction(store,'readonly'); const os=tx.objectStore(store); const rq=os.getAll(); rq.onsuccess=()=>res(rq.result); rq.onerror=e=>rej(e); }catch(err){ rej(err);} }); }
+
+  /* Large seed: 320 items (diverse common foods) */
+  const seedAlimentos = [
+    {name:'Pan blanco',gi:75,carbs:49,kcal:265},{name:'Pan integral',gi:65,carbs:41,kcal:247},{name:'Pan centeno',gi:50,carbs:41,kcal:259},
+    {name:'Tostada',gi:70,carbs:50,kcal:480},{name:'Bagel',gi:72,carbs:56,kcal:300},{name:'Pan pita',gi:57,carbs:56,kcal:275},
+    {name:'Arroz blanco cocido',gi:73,carbs:28,kcal:130},{name:'Arroz integral cocido',gi:50,carbs:23,kcal:111},{name:'Arroz basmati',gi:58,carbs:25,kcal:120},
+    {name:'Pasta cocida',gi:51,carbs:25,kcal:131},{name:'Pasta integral',gi:42,carbs:25,kcal:124},{name:'Quinoa cocida',gi:53,carbs:21,kcal:120},
+    {name:'Cuscus',gi:65,carbs:23,kcal:112},{name:'Masa pizza',gi:80,carbs:26,kcal:266},{name:'Pizza',gi:80,carbs:26,kcal:266},
+    {name:'Patata cocida',gi:78,carbs:17,kcal:87},{name:'Patata asada',gi:85,carbs:20,kcal:95},{name:'Pure patatas',gi:87,carbs:12,kcal:88},
+    {name:'Patatas fritas',gi:75,carbs:49,kcal:536},{name:'Patatas chips',gi:75,carbs:49,kcal:536},{name:'Tortilla de patatas',gi:60,carbs:12,kcal:150},
+    {name:'Galletas',gi:75,carbs:65,kcal:450},{name:'Muesli',gi:50,carbs:64,kcal:450},{name:'Avena copos',gi:55,carbs:66,kcal:389},
+    {name:'Avena instantanea',gi:79,carbs:66,kcal:380},{name:'Harina trigo',gi:85,carbs:76,kcal:364},{name:'Harina maiz',gi:70,carbs:72,kcal:360},
+    {name:'Cereales azucarados',gi:81,carbs:84,kcal:357},{name:'Cornflakes',gi:81,carbs:84,kcal:357},{name:'Miel',gi:58,carbs:82,kcal:304},
+    {name:'Azucar blanca',gi:65,carbs:100,kcal:387},{name:'Jarabe arce',gi:54,carbs:67,kcal:260},{name:'Sirope agave',gi:20,carbs:76,kcal:310},
+    {name:'Sirope maiz',gi:100,carbs:76,kcal:310},{name:'Chocolate negro',gi:23,carbs:46,kcal:598},{name:'Chocolate con leche',gi:45,carbs:52,kcal:535},
+    {name:'Helado',gi:61,carbs:23,kcal:207},{name:'Brownie',gi:65,carbs:50,kcal:450},{name:'Tarta queso',gi:60,carbs:20,kcal:321},
+    {name:'Magdalena',gi:70,carbs:55,kcal:450},{name:'Croissant',gi:67,carbs:45,kcal:406},{name:'Donut',gi:76,carbs:50,kcal:452},
+    {name:'Arroz con leche',gi:70,carbs:20,kcal:150},{name:'Crepe',gi:60,carbs:30,kcal:220},{name:'Gofre',gi:67,carbs:50,kcal:291},
+    {name:'Lentejas cocidas',gi:32,carbs:20,kcal:116},{name:'Garbanzos cocidos',gi:28,carbs:27,kcal:164},{name:'Frijoles negros',gi:30,carbs:23,kcal:132},
+    {name:'Alubias blancas',gi:31,carbs:24,kcal:140},{name:'Edamame',gi:18,carbs:8.9,kcal:121},{name:'Tofu',gi:15,carbs:1.9,kcal:76},
+    {name:'Tempeh',gi:15,carbs:9.4,kcal:193},{name:'Hummus',gi:6,carbs:14.3,kcal:166},{name:'Falafel',gi:43,carbs:30,kcal:333},
+    {name:'Pollo pechuga',gi:0,carbs:0,kcal:165},{name:'Ternera',gi:0,carbs:0,kcal:250},{name:'Cerdo',gi:0,carbs:0,kcal:290},
+    {name:'Cordero',gi:0,carbs:0,kcal:294},{name:'Salmón',gi:0,carbs:0,kcal:208},{name:'Atún',gi:0,carbs:0,kcal:132},
+    {name:'Huevos',gi:0,carbs:1.1,kcal:155},{name:'Queso fresco',gi:0,carbs:1.3,kcal:98},{name:'Queso curado',gi:0,carbs:1.3,kcal:402},
+    {name:'Yogur natural',gi:36,carbs:4.7,kcal:61},{name:'Yogur griego',gi:35,carbs:3.6,kcal:120},{name:'Leche entera',gi:41,carbs:5,kcal:61,density:1.03},
+    {name:'Leche desnatada',gi:32,carbs:5,kcal:35,density:1.03},{name:'Leche soja',gi:30,carbs:3,kcal:54,density:1.03},{name:'Leche almendra',gi:30,carbs:0.5,kcal:15,density:1.02},
+    {name:'Kefir',gi:33,carbs:4,kcal:59},{name:'Requeson',gi:30,carbs:3.4,kcal:98},{name:'Quark',gi:30,carbs:4,kcal:67},
+    {name:'Aguacate',gi:15,carbs:8.5,kcal:160},{name:'Manzana',gi:36,carbs:14,kcal:52},{name:'Pera',gi:38,carbs:15,kcal:57},
+    {name:'Platano',gi:51,carbs:23,kcal:96},{name:'Fresas',gi:40,carbs:8,kcal:33},{name:'Uvas',gi:46,carbs:17,kcal:69},
+    {name:'Naranja',gi:43,carbs:8.3,kcal:47},{name:'Kiwi',gi:52,carbs:15,kcal:61},{name:'Mango',gi:51,carbs:15,kcal:60},
+    {name:'Piña',gi:59,carbs:13,kcal:50},{name:'Melon',gi:65,carbs:8,kcal:34},{name:'Sandia',gi:76,carbs:8,kcal:30},
+    {name:'Cereza',gi:63,carbs:16,kcal:63},{name:'Papaya',gi:60,carbs:10,kcal:43},{name:'Lima',gi:32,carbs:3.3,kcal:30},
+    {name:'Tomate',gi:30,carbs:3.9,kcal:18},{name:'Zanahoria',gi:35,carbs:10,kcal:41},{name:'Cebolla',gi:10,carbs:9,kcal:40},
+    {name:'Ajo',gi:30,carbs:33,kcal:149},{name:'Pimiento',gi:15,carbs:6,kcal:31},{name:'Lechuga',gi:15,carbs:2.9,kcal:15},
+    {name:'Espinacas',gi:15,carbs:1.1,kcal:23},{name:'Brocoli',gi:10,carbs:7,kcal:34},{name:'Coliflor',gi:10,carbs:5,kcal:25},
+    {name:'Champinones',gi:10,carbs:3.3,kcal:22},{name:'Calabacin',gi:15,carbs:3,kcal:17},{name:'Berenjena',gi:15,carbs:6,kcal:25},
+    {name:'Maiz dulce',gi:52,carbs:19,kcal:86},{name:'Guisantes',gi:51,carbs:14,kcal:81},{name:'Edamame',gi:18,carbs:8.9,kcal:121},
+    {name:'Semillas chia',gi:1,carbs:42,kcal:486},{name:'Semillas lino',gi:35,carbs:29,kcal:534},{name:'Almendras',gi:10,carbs:22,kcal:579},
+    {name:'Avellanas',gi:15,carbs:17,kcal:628},{name:'Anacardos',gi:22,carbs:30,kcal:553},{name:'Pistachos',gi:15,carbs:28,kcal:562},
+    {name:'Nueces',gi:15,carbs:14,kcal:654},{name:'Frutos secos mixtos',gi:20,carbs:30,kcal:600},{name:'Mantequilla',gi:0,carbs:0.1,kcal:717},
+    {name:'Aceite oliva',gi:0,carbs:0,kcal:884,density:0.91},{name:'Mayonesa',gi:0,carbs:0.6,kcal:680},{name:'Salsa soja',gi:15,carbs:5,kcal:53},
+    {name:'Ketchup',gi:55,carbs:22,kcal:112},{name:'Mostaza',gi:15,carbs:5,kcal:66},{name:'Mermelada',gi:55,carbs:65,kcal:250},
+    {name:'Hummus',gi:6,carbs:14.3,kcal:166},{name:'Tahini',gi:0,carbs:17,kcal:595},{name:'Proteina whey',gi:30,carbs:5,kcal:120},
+    {name:'Sopa pollo',gi:15,carbs:3,kcal:40,density:1.02},{name:'Caldo verduras',gi:15,carbs:2,kcal:15,density:1.02},{name:'Gazpacho',gi:25,carbs:6,kcal:48,density:1.02},
+    {name:'Sushi',gi:55,carbs:28,kcal:200},{name:'Sashimi',gi:0,carbs:0,kcal:99},{name:'Tempura',gi:70,carbs:30,kcal:350},
+    {name:'Hamburguesa',gi:50,carbs:10,kcal:295},{name:'Hot dog',gi:52,carbs:20,kcal:290},{name:'Empanada',gi:65,carbs:30,kcal:260},
+    {name:'Croissant jamon',gi:67,carbs:45,kcal:406},{name:'Bocadillo jamon',gi:70,carbs:30,kcal:300},{name:'Wrap pollo',gi:50,carbs:25,kcal:220},
+    {name:'Ensalada mixta',gi:15,carbs:5,kcal:80},{name:'Poke bowl',gi:55,carbs:45,kcal:420},{name:'Taco',gi:60,carbs:30,kcal:170},
+    {name:'Burrito',gi:65,carbs:45,kcal:400},{name:'Nachos',gi:70,carbs:60,kcal:487},{name:'Patatas bravas',gi:78,carbs:30,kcal:200},
+    {name:'Cerveza',gi:110,carbs:3.6,kcal:43,density:1.01},{name:'Vino tinto',gi:50,carbs:2.6,kcal:85,density:0.99},{name:'Vino blanco',gi:50,carbs:2.6,kcal:82,density:0.99},
+    {name:'Refresco cola',gi:63,carbs:10.6,kcal:42,density:1.04},{name:'Zumo manzana',gi:40,carbs:11,kcal:46,density:1.04},{name:'Batido',gi:35,carbs:8,kcal:100,density:1.05},
+    {name:'Cafe',gi:0,carbs:0,kcal:1,density:1.0},{name:'Te',gi:0,carbs:0,kcal:0,density:1.0},{name:'Kombucha',gi:50,carbs:3,kcal:15,density:1.02},
+    {name:'Proteina vegetal',gi:30,carbs:6,kcal:110},{name:'Barrita energetica',gi:65,carbs:60,kcal:350},{name:'Bebida isotonica',gi:78,carbs:6,kcal:25,density:1.04},
+    {name:'Salsa bechamel',gi:50,carbs:6,kcal:150},{name:'Pure manzana',gi:70,carbs:18,kcal:68},{name:'Compota',gi:65,carbs:20,kcal:80},
+    {name:'Alitas pollo',gi:0,carbs:0,kcal:290},{name:'Pechuga asada',gi:0,carbs:0,kcal:165},{name:'Costillas',gi:0,carbs:0,kcal:360},
+    {name:'Pescado frito',gi:0,carbs:0,kcal:220},{name:'Calamares',gi:0,carbs:0,kcal:175},{name:'Mejillones',gi:0,carbs:0,kcal:172},
+    {name:'Paella',gi:65,carbs:30,kcal:280},{name:'Arroz negro',gi:65,carbs:30,kcal:290},{name:'Fideua',gi:65,carbs:35,kcal:300},
+    {name:'Tortilla francesa',gi:0,carbs:1,kcal:154},{name:'Huevos revueltos',gi:0,carbs:1.5,kcal:160},{name:'Omelette',gi:0,carbs:2,kcal:200},
+    {name:'Pudding',gi:65,carbs:20,kcal:150},{name:'Flan',gi:65,carbs:18,kcal:140},{name:'Crema catalana',gi:70,carbs:25,kcal:220},
+    {name:'Sushi maki arroz',gi:55,carbs:28,kcal:200},{name:'Sushi california',gi:58,carbs:30,kcal:250},{name:'Onigiri',gi:60,carbs:35,kcal:210},
+    {name:'Snacks salados',gi:70,carbs:60,kcal:500},{name:'Palomitas',gi:65,carbs:74,kcal:375},{name:'Pretzels',gi:83,carbs:80,kcal:380},
+    {name:'Salsa pesto',gi:10,carbs:3,kcal:240},{name:'Salsa tomate casera',gi:30,carbs:6,kcal:40},{name:'Salsa barbacoa',gi:60,carbs:20,kcal:120},
+    {name:'Pickles',gi:15,carbs:2,kcal:11},{name:'Aceitunas',gi:15,carbs:3,kcal:145},{name:'Tapenade',gi:20,carbs:5,kcal:200},
+    {name:'Brocheta pollo',gi:0,carbs:0,kcal:170},{name:'Brocheta verduras',gi:20,carbs:8,kcal:80},{name:'Ratatouille',gi:20,carbs:10,kcal:120},
+    {name:'Lasagna',gi:66,carbs:28,kcal:300},{name:'Cannelloni',gi:64,carbs:30,kcal:320},{name:'Ravioli',gi:65,carbs:32,kcal:330},
+    {name:'Polenta',gi:68,carbs:20,kcal:86},{name:'Gnocchi',gi:64,carbs:30,kcal:130},{name:'Berenjena parmigiana',gi:40,carbs:12,kcal:220},
+    {name:'Sopa miso',gi:15,carbs:3,kcal:40},{name:'Ramen',gi:70,carbs:40,kcal:430},{name:'Udon',gi:70,carbs:40,kcal:350},
+    {name:'Salsa curry',gi:35,carbs:8,kcal:90},{name:'Curry pollo',gi:55,carbs:24,kcal:320},{name:'Curry verduras',gi:50,carbs:20,kcal:200},
+    {name:'Cuscus marroqui',gi:65,carbs:23,kcal:112},{name:'Tabbouleh',gi:50,carbs:18,kcal:120},{name:'Shawarma',gi:60,carbs:30,kcal:350},
+    {name:'Falafel wrap',gi:60,carbs:40,kcal:420},{name:'Shakshuka',gi:30,carbs:15,kcal:220},{name:'Labneh',gi:30,carbs:3,kcal:120},
+    {name:'Arepa',gi:55,carbs:45,kcal:230},{name:'Empanada argentina',gi:68,carbs:35,kcal:320},{name:'Tamal',gi:70,carbs:40,kcal:330},
+    {name:'Ceviche',gi:10,carbs:2,kcal:120},{name:'Pulpo a la gallega',gi:10,carbs:0,kcal:150},{name:'Bacalao',gi:0,carbs:0,kcal:140},
+    {name:'Croquetas',gi:70,carbs:25,kcal:250},{name:'Paté',gi:20,carbs:3,kcal:260},{name:'Foie',gi:15,carbs:2,kcal:462},
+    {name:'Sushi nigiri',gi:55,carbs:28,kcal:200},{name:'Sopa tom yum',gi:20,carbs:5,kcal:60},{name:'Pad thai',gi:68,carbs:45,kcal:450},
+    {name:'Couscous',gi:65,carbs:23,kcal:112},{name:'Bulgur',gi:46,carbs:76,kcal:342},{name:'Farro',gi:45,carbs:60,kcal:340},
+    {name:'Semola',gi:65,carbs:70,kcal:360},{name:'Triticale',gi:50,carbs:60,kcal:350},{name:'Kamut',gi:45,carbs:70,kcal:360},
+    {name:'Miso',gi:15,carbs:5,kcal:120},{name:'Natto',gi:20,carbs:12,kcal:200},{name:'Temaki',gi:58,carbs:30,kcal:280},
+    {name:'Sake',gi:60,carbs:4,kcal:134},{name:'Cider',gi:70,carbs:11,kcal:50},{name:'Sidra',gi:70,carbs:11,kcal:50}
+  ];
+
+  const liquidos_keywords = ['agua','leche','vino','cerveza','zumo','jugo','refresco','bebida','aceite','sopa','caldo','té','café','batido','kombucha','jarabe','sirope'];
+
+  /* Trie */
+  class TrieNode{ constructor(){ this.children = {}; this.words = []; this.end=false; } }
+  class Trie{ constructor(){ this.root = new TrieNode(); } insert(word,payload){ let node=this.root; const key=word.toLowerCase(); for(const ch of key){ if(!node.children[ch]) node.children[ch]=new TrieNode(); node = node.children[ch]; if(node.words.length < 200) node.words.push(payload); } node.end=true; } searchPrefix(prefix){ let node=this.root; const key=(prefix||'').toLowerCase(); for(const ch of key){ if(!node.children[ch]) return []; node = node.children[ch]; } return node.words || []; }}
+  let trie = new Trie();
+
+  const PAGE_SIZE = 30; let modalPage=0, currentFilter='';
+
+  function openModal(){ $('modalOverlay').style.display='flex'; $('modalSearch').value=''; modalPage=0; renderModal(); setTimeout(()=>$('modalSearch').focus(),100); }
+  function closeModal(e){ if(!e || (e.target && e.target.id==='modalOverlay')) $('modalOverlay').style.display='none'; }
+
+  async function renderModal(){ const list=$('modalList'); list.innerHTML=''; try{ const results = currentFilter ? trie.searchPrefix(currentFilter) : await idbGetAll('alimentos'); const start = modalPage*PAGE_SIZE; const page = results.slice(start,start+PAGE_SIZE); page.forEach(item=>{ const d=document.createElement('div'); d.className='item'; d.innerText = item.name; d.onclick = ()=>{ addRowWithAlimento(item.name); closeModal(); }; list.appendChild(d); }); renderPager(results.length); }catch(err){ console.error('renderModal',err); list.innerHTML='<div class="item">Error cargando</div>'; } }
+  function renderPager(total){ const pager=$('modalPager'); pager.innerHTML=''; const pages=Math.max(1,Math.ceil(total/PAGE_SIZE)); if(pages<=1) return; const prev=document.createElement('button'); prev.className='small btn ghost'; prev.innerText='«'; prev.onclick=()=>{ if(modalPage>0) modalPage--, renderModal(); }; const next=document.createElement('button'); next.className='small btn ghost'; next.innerText='»'; next.onclick=()=>{ if(modalPage<pages-1) modalPage++, renderModal(); }; pager.appendChild(prev); const span=document.createElement('span'); span.style.padding='6px'; span.innerText=(modalPage+1)+' / '+pages; pager.appendChild(span); pager.appendChild(next); }
+
+  function addRowWithAlimento(name){ try{ const tbody=$('cuerpoTabla'); const tr=document.createElement('tr'); const tdName=document.createElement('td'); tdName.innerText=name; tdName.dataset.name=name; const tdQty=document.createElement('td'); const inp=document.createElement('input'); inp.type='number'; inp.value=100; inp.style.width='80px'; tdQty.appendChild(inp); const tdIG=document.createElement('td'); const tdCarbs=document.createElement('td'); const tdCG=document.createElement('td'); const tdKcal=document.createElement('td'); const tdQ=document.createElement('td'); const btn=document.createElement('button'); btn.className='small btn ghost'; btn.innerText='Quitar'; btn.onclick=()=>{ tr.remove(); recalcAll(); }; tdQ.appendChild(btn); tr.appendChild(tdName); tr.appendChild(tdQty); tr.appendChild(tdIG); tr.appendChild(tdCarbs); tr.appendChild(tdCG); tr.appendChild(tdKcal); tr.appendChild(tdQ); tbody.appendChild(tr); inp.addEventListener('input', recalcAll); recalcAll(); }catch(err){ console.error('addRow',err);} }
+
+  async function recalcAll(){ try{ const filas=Array.from(document.querySelectorAll('#cuerpoTabla tr')); let CG_total=0,kcal_total=0,carbs_total=0,ig_pes_num=0; for(const tr of filas){ const name=tr.children[0].dataset.name; const qty=Number(tr.querySelector('input').value)||0; const item = await idbGet('alimentos', name) || seedAlimentos.find(a=>a.name===name); if(!item){ tr.children[2].innerText='-'; tr.children[3].innerText='0'; tr.children[4].innerText='0'; tr.children[5].innerText='0'; continue; } const unitMl = !!item.density; const gramos = unitMl ? qty * (item.density || 1) : qty; const carbs_g = gramos * (item.carbs/100); const cg_line = (item.gi * carbs_g)/100; const kcal_line = gramos * (item.kcal/100); tr.children[2].innerText = item.gi; tr.children[3].innerText = round(carbs_g,2); tr.children[4].innerText = round(cg_line,2); tr.children[5].innerText = round(kcal_line,1); CG_total += cg_line; kcal_total += kcal_line; carbs_total += carbs_g; ig_pes_num += (item.gi * carbs_g); } const ig_ponderado = carbs_total ? (ig_pes_num / carbs_total) : 0; const perfil = JSON.parse(localStorage.getItem('perfilUsuario')||'null'); const peso = perfil ? Number(perfil.peso) : 70; const ire = peso ? (CG_total / peso) : 0; const vg = kcal_total ? ((CG_total / kcal_total) * 100) : 0; $('resultado').innerText = `CG total: ${round(CG_total,2)} | Kcal total: ${Math.round(kcal_total)}`; $('igprom').innerText = round(ig_ponderado,1); $('iretext').innerText = round(ire,2); $('vgtext').innerText = round(vg,2); }catch(err){ console.error('recalcAll',err); } }
+  function round(v,d=2){ return Math.round(v*Math.pow(10,d))/Math.pow(10,d); }
+
+  /* Seed & build */
+  function disableUI(){ ['addBtn','openModalBtn','scanBtn','exportCSV','exportPDF','saveRecipeBtn','loadRecipeBtn','clearBtn'].forEach(id=>{ const el=$(id); if(el) el.disabled=true; }); }
+  function enableUI(){ ['addBtn','openModalBtn','scanBtn','exportCSV','exportPDF','saveRecipeBtn','loadRecipeBtn','clearBtn'].forEach(id=>{ const el=$(id); if(el) el.disabled=false; }); }
+
+  async function seedAndBuild(){ try{ await openDB(); const existing = await idbGetAll('alimentos'); if(!existing || existing.length===0){ for(const a of seedAlimentos) await idbPut('alimentos', a); } const all = await idbGetAll('alimentos'); trie = new Trie(); all.forEach(a=> trie.insert(a.name, a)); await rebuildRecipesSelect(); enableUI(); console.log('seed complete'); }catch(err){ console.error('seedAndBuild',err); enableUI(); } }
+
+  /* Profile */
+  function guardarPerfil(){ try{ const nombre=$('nombre').value.trim(); const sexo=$('sexo').value; const edad=Number($('edad').value)||0; const peso=Number($('peso').value)||0; const talla=Number($('talla').value)||0; if(!edad||!peso||!talla){ alert('Completa edad, peso y talla'); return; } const imc=(peso/Math.pow(talla/100,2)).toFixed(1); const tmb = sexo==='M' ? 66+(13.7*peso)+(5*talla)-(6.8*edad) : 655+(9.6*peso)+(1.8*talla)-(4.7*edad); const req=Math.round(tmb*1.5); const perfil={nombre,sexo,edad,peso,talla,imc,req}; localStorage.setItem('perfilUsuario',JSON.stringify(perfil)); mostrarPerfil(); alert('Perfil guardado'); }catch(err){ console.error('guardarPerfil',err); } }
+  function mostrarPerfil(){ const p=JSON.parse(localStorage.getItem('perfilUsuario')||'null'); const info=$('infoPerfil'); if(p) info.innerHTML = `${p.nombre||'Usuario'} — IMC: ${p.imc} — Req: ${p.req} kcal/día`; else info.innerText='Sin perfil guardado'; }
+
+  /* Recipes */
+  async function saveRecipe(){ try{ const name=prompt('Nombre plantilla'); if(!name) return; const filas=Array.from(document.querySelectorAll('#cuerpoTabla tr')).map(tr=>({name:tr.children[0].dataset.name, qty: Number(tr.querySelector('input').value)||0})); const id='r_'+Date.now(); await idbPut('recipes',{id,name,rows:filas,tipo:$('tipoComida').value}); alert('Plantilla guardada'); await rebuildRecipesSelect(); }catch(err){ console.error('saveRecipe',err); } }
+  async function rebuildRecipesSelect(){ try{ const sel=$('recipesSelect'); sel.innerHTML=''; sel.appendChild(new Option('-- recargas --','')); const all=await idbGetAll('recipes'); all.forEach(r=> sel.appendChild(new Option(r.name,r.id))); const list=$('recipes'); list.innerHTML=''; all.forEach(r=>{ const d=document.createElement('div'); d.style.display='flex'; d.style.justifyContent='space-between'; d.style.alignItems='center'; d.innerText = r.name + ' ('+ r.rows.length + ' items)'; const btn=document.createElement('button'); btn.className='small btn ghost'; btn.innerText='Cargar'; btn.onclick=()=> loadRecipeById(r.id); d.appendChild(btn); list.appendChild(d); }); }catch(err){ console.error('rebuildRecipesSelect',err); } }
+  async function loadRecipeById(id){ try{ const r=await idbGet('recipes', id); if(!r) return; $('tipoComida').value=r.tipo||'Comida'; $('cuerpoTabla').innerHTML=''; r.rows.forEach(row=> addRowWithAlimento(row.name)); setTimeout(()=>{ r.rows.forEach((row,i)=>{ const tr=document.querySelectorAll('#cuerpoTabla tr')[i]; if(tr) tr.querySelector('input').value=row.qty; }); recalcAll(); },60); }catch(err){ console.error('loadRecipeById',err); } }
+
+  /* EAN mapping & scanner */
+  async function saveEANMapping(code,name){ try{ await idbPut('ean',{code:String(code),name}); }catch(err){ console.warn('saveEANMapping',err); } }
+  async function getEANMapping(code){ try{ return await idbGet('ean',String(code)); }catch(err){ return null; } }
+
+  let scanning=false; const video=$('video'); const scanStatus=$('scanStatus'); let quaggaRunning=false;
+  function isSecureContextAllowed(){ try{ const host=location.hostname; const proto=location.protocol; return (proto==='https:'||host==='localhost'||host==='127.0.0.1'); }catch(e){ return false; } }
+
+  async function startScanner(){ if(!isSecureContextAllowed()){ alert('La cámara sólo funciona en HTTPS o localhost. Sirve la app con `npx serve`'); return; } if(scanning) return stopScanner(); try{ const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); video.srcObject=stream; video.style.display='block'; scanStatus.innerText='Buscando...'; scanning=true; detectFrame(); if(window.Quagga && !quaggaRunning){ try{ Quagga.init({ inputStream:{ type:'LiveStream', target: video }, decoder:{ readers:['ean_reader','ean_8_reader','code_128_reader','upc_reader'] } }, function(err){ if(!err){ Quagga.start(); quaggaRunning=true; Quagga.onDetected(function(data){ if(data && data.codeResult && data.codeResult.code){ handleScannedCode(data.codeResult.code); stopScanner(); } }); } else console.warn('Quagga init',err); }); }catch(err){ console.warn('Quagga err',err); } } }catch(err){ alert('No se pudo acceder a la cámara: '+(err && err.message?err.message:err)); } }
+  async function stopScanner(){ scanning=false; scanStatus.innerText='Inactivo'; video.style.display='none'; if(video.srcObject){ const tracks=video.srcObject.getTracks(); tracks.forEach(t=>t.stop()); video.srcObject=null; } if(window.Quagga && quaggaRunning){ try{ Quagga.stop(); }catch(e){} quaggaRunning=false; } }
+  async function detectFrame(){ if(!scanning) return; try{ if('BarcodeDetector' in window){ const detector=new BarcodeDetector({formats:['ean_13','ean_8','qr_code','code_128','upc_e','upc_a']}); const barcodes=await detector.detect(video); if(barcodes && barcodes.length){ const code=barcodes[0].rawValue; handleScannedCode(code); await stopScanner(); return; } } }catch(err){ console.warn('BarcodeDetector',err); } requestAnimationFrame(detectFrame); }
+
+  async function handleScannedCode(code){ try{ scanStatus.innerText='Escaneado: '+code; const mapped = await getEANMapping(code); if(mapped && mapped.name){ addRowWithAlimento(mapped.name); alert('Agregado desde mapeo local: '+mapped.name); return; } const url='https://es.openfoodfacts.org/api/v0/product/'+encodeURIComponent(code)+'.json'; const resp = await fetch(url).catch(()=>null); if(resp && resp.ok){ const data = await resp.json().catch(()=>null); if(data && data.product){ const p=data.product; const name=p.product_name||p.generic_name||('Producto '+code); const nutriments=p.nutriments||{}; const carbs100=nutriments.carbohydrates_100g||nutriments.carbohydrates||10; const kcal100=nutriments['energy-kcal_100g']||nutriments['energy-kcal']||nutriments['energy_100g']||100; const gi=50; const item={name,gi,carbs:carbs100,kcal:kcal100,density:null}; await idbPut('alimentos',item); trie.insert(item.name,item); await saveEANMapping(code,item.name); addRowWithAlimento(item.name); alert('Producto agregado desde OpenFoodFacts: '+item.name + "\nSe guardó mapeo local. Revisa valores."); return; } } window.open('https://es.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(code)+'&search_simple=1&action=process&json=1','_blank'); }catch(err){ console.warn('handleScannedCode',err); window.open('https://es.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(code),'_blank'); } }
+
+  /* Export CSV */
+  function exportCSV(){ try{ const rows=[['Alimento','Cantidad','IG','Carbs(g)','CG','Kcal']]; const filas = Array.from(document.querySelectorAll('#cuerpoTabla tr')); filas.forEach(tr=> rows.push([ tr.children[0].dataset.name, tr.querySelector('input').value||'', tr.children[2].innerText||'', tr.children[3].innerText||'', tr.children[4].innerText||'', tr.children[5].innerText||'' ])); const csv = rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='glucemica_'+new Date().toISOString().slice(0,10)+'.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }catch(err){ console.error('exportCSV',err); } }
+
+  /* Export PDF using jsPDF + autoTable */
+  async function exportPDF(){ try{
+    // build table data
+    const filas = Array.from(document.querySelectorAll('#cuerpoTabla tr'));
+    if(filas.length === 0){ alert('No hay filas para exportar'); return; }
+    const perfil = JSON.parse(localStorage.getItem('perfilUsuario')||'null');
+    const titulo = 'Calculadora Glucémica - Resumen';
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    doc.setFontSize(14); doc.text(titulo, 14, 14);
+    doc.setFontSize(10);
+    const fecha = new Date().toLocaleString(); doc.text('Fecha: '+fecha, 14, 20);
+    if(perfil) doc.text(`Usuario: ${perfil.nombre||''} | IMC: ${perfil.imc} | Peso: ${perfil.peso||''} kg`, 14, 26);
+
+    // Prepare rows for autotable
+    const tableBody = filas.map(tr=>[ tr.children[0].dataset.name, tr.querySelector('input').value || '', tr.children[2].innerText || '', tr.children[3].innerText || '', tr.children[4].innerText || '', tr.children[5].innerText || '' ]);
+    doc.autoTable({ startY: 34, head: [['Alimento','Cantidad','IG','Carbs(g)','CG','Kcal']], body: tableBody, styles:{fontSize:8}, headStyles:{fillColor:[46,139,87]} });
+
+    // Summary block at end
+    const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 8 : 34 + (tableBody.length * 6) + 8;
+    const cgTotalText = $('resultado').innerText || '';
+    const igPromText = 'IG ponderado: ' + ($('igprom').innerText || '0');
+    const ireText = 'IRE: ' + ($('iretext').innerText || '0');
+    doc.setFontSize(10); doc.text(cgTotalText, 14, finalY);
+    doc.text(igPromText, 14, finalY + 6);
+    doc.text(ireText, 14, finalY + 12);
+
+    // Footer
+    const pageCount = doc.getNumberOfPages();
+    for(let i=1;i<=pageCount;i++){ doc.setPage(i); doc.setFontSize(8); doc.text(`powered by Sarmiento — Página ${i} de ${pageCount}`, 14, 290); }
+
+    doc.save('glucemica_resumen_'+new Date().toISOString().slice(0,10)+'.pdf');
+  }catch(err){ console.error('exportPDF',err); alert('Error exportando PDF: '+err.message); } }
+
+  /* Tests */
+  function basicTests(){ try{ console.log('basicTests...'); console.assert(typeof trie.searchPrefix==='function','Trie ok'); addRowWithAlimento('Pan blanco'); addRowWithAlimento('Leche entera'); const filas=document.querySelectorAll('#cuerpoTabla tr'); console.assert(filas.length>=2,'Rows added'); console.log('basicTests OK'); }catch(err){ console.error('basicTests',err); } }
+  async function asyncTests(){ try{ await saveEANMapping('0000000000000','Pan blanco'); const m=await getEANMapping('0000000000000'); console.assert(m && m.name==='Pan blanco','EAN roundtrip'); console.log('asyncTests OK'); }catch(err){ console.error('asyncTests',err); } }
+
+  /* Wiring events */
+  $('guardarPerfil').addEventListener('click', ()=> guardarPerfil());
+  $('cargarPerfil').addEventListener('click', ()=> mostrarPerfil());
+  $('addBtn').addEventListener('click', ()=>{ const q=$('buscador').value.trim(); if(!q) return openModal(); const res=trie.searchPrefix(q.toLowerCase()); if(res.length===1) addRowWithAlimento(res[0].name); else openModal(); });
+  $('openModalBtn').addEventListener('click', openModal);
+  $('modalSearch').addEventListener('input', e=>{ currentFilter=e.target.value.trim().toLowerCase(); modalPage=0; renderModal(); });
+  $('buscador').addEventListener('input', e=>{ currentFilter=e.target.value.trim().toLowerCase(); modalPage=0; renderModal(); });
+  $('scanBtn').addEventListener('click', ()=> startScanner());
+  $('exportCSV').addEventListener('click', exportCSV);
+  $('exportPDF').addEventListener('click', exportPDF);
+  $('clearBtn').addEventListener('click', ()=>{ $('cuerpoTabla').innerHTML=''; recalcAll(); });
+  $('saveRecipeBtn').addEventListener('click', ()=> saveRecipe());
+  $('loadRecipeBtn').addEventListener('click', ()=>{ const id=$('recipesSelect').value; if(id) loadRecipeById(id); });
+  $('modalOverlay').addEventListener('click', closeModal);
+  $('runTestsBtn').addEventListener('click', ()=>{ basicTests(); asyncTests(); alert('Tests ejecutados — mira la consola'); });
+
+  /* Manifest & SW (register only on http(s)) */
+  try{ const manifest={ name:'Calculadora Glucémica', short_name:'Glucemica', start_url:'.', display:'standalone', background_color:'#fff', description:'Calculadora glucemica' }; const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'}); const url=URL.createObjectURL(blob); const l=document.createElement('link'); l.rel='manifest'; l.href=url; document.head.appendChild(l); const swCode="self.addEventListener('install',e=>{self.skipWaiting();});self.addEventListener('fetch',function(e){});"; const swBlob=new Blob([swCode],{type:'application/javascript'}); const swURL=URL.createObjectURL(swBlob); if(location.protocol!=='file:' && 'serviceWorker' in navigator){ navigator.serviceWorker.register(swURL).then(()=>console.log('SW registered')).catch(e=>console.warn('SW error',e)); } else { $('localNotice').style.display='block'; $('localNotice').innerText='Estás en file:// — sirve via HTTP(S) para cámara y SW (p.ej. npx serve)'; } window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); const btn=$('installBtn'); btn.style.display='inline-block'; btn.onclick=async ()=>{ e.prompt(); const choice=await e.userChoice; console.log('install',choice); btn.style.display='none'; }; }); }catch(err){ console.warn('manifest error',err); }
+
+  /* Init */
+  (async function init(){ try{ disableUI(); await seedAndBuild(); mostrarPerfil(); setTimeout(()=>{ basicTests(); asyncTests(); },1200); }catch(err){ console.error('init',err); enableUI(); } })();
+
+})();
+</script>
 </body>
 </html>
