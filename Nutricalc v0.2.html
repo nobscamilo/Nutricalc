@@ -999,21 +999,21 @@ td input {
     });
   }
 
-  function idbGet(store, key) {
-    return new Promise((res, rej) => {
-      if (!db) return res(null);
-      try {
-        const tx = db.transaction(store, 'readonly');
-        const os = tx.objectStore(store);
-        const rq = os.get(key);
-        rq.
-        rq.onsuccess = () => res(rq.result);
-        rq.onerror = e => rej(e);
-      } catch (err) {
-        rej(err);
-      }
-    });
-  }
+function idbGet(store, key) {
+  return new Promise((res, rej) => {
+    if (!db) return res(null);
+    try {
+      const tx = db.transaction(store, 'readonly');
+      const os = tx.objectStore(store);
+      const rq = os.get(key);
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = e => rej(e);
+    } catch (err) {
+      rej(err);
+    }
+  });
+}
+
 
   function idbGetAll(store) {
     return new Promise((res, rej) => {
@@ -1248,10 +1248,11 @@ td input {
       inp.dataset.name = name;
       tdQty.appendChild(inp);
 
-      const tdIG = document.createElement('td');
-      const tdCarbs = document.createElement('td');
-      const tdCG = document.createElement('td');
-      const tdKcal = document.createElement('td');
+const tdIG = document.createElement('td'); tdIG.innerText = '-';
+const tdCarbs = document.createElement('td'); tdCarbs.innerText = '0';
+const tdCG = document.createElement('td'); tdCG.innerText = '0';
+const tdKcal = document.createElement('td'); tdKcal.innerText = '0';
+
       
       const tdQ = document.createElement('td');
       const btn = document.createElement('button');
@@ -1500,20 +1501,21 @@ td input {
     }
   });
 
-  $('addBtn').onclick = async () => {
-    const query = $('buscador').value.trim();
-    if (!query) {
-      alert('Escribe el nombre de un alimento');
-      return;
-    }
-    const results = trie.searchPrefix(query);
-    if (results.length === 0) {
-      alert('No se encontró el alimento');
-      return;
-    }
-    await addRowWithAlimento(results[0].name);
-    $('buscador').value = '';
-  };
+$('addBtn').onclick = async () => {
+  const query = $('buscador').value.trim();
+  if (!query) { alert('Escribe el nombre de un alimento'); return; }
+  const results = trie.searchPrefix(query);
+  if (!results || results.length === 0) {
+    alert('No se encontró el alimento');
+    return;
+  }
+  // results puede contener objetos (recomendado). Soporte ambos casos:
+  const first = results[0];
+  const name = (typeof first === 'string') ? first : (first && first.name) ? first.name : String(first);
+  await addRowWithAlimento(name);
+  $('buscador').value = '';
+};
+
 
   $('openModalBtn').onclick = openModal;
 
