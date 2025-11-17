@@ -1,14 +1,14 @@
 # Calculadora Glucémica PWA 🍎
 
-[![pages-build-deployment](https://github.com/YOUR_USERNAME/YOUR_REPO_NAME/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/YOUR_USERNAME/YOUR_REPO_NAME/actions/workflows/pages/pages-build-deployment)
+[![pages-build-deployment](https://github.com/nobscamilo/Nutricalc/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/nobscamilo/Nutricalc/actions/workflows/pages/pages-build-deployment)
 
 Una aplicación web progresiva (PWA) para calcular índice y carga glucémica de alimentos con funcionalidades offline, scanner de códigos de barras y gestión de recetas.
 
 ## 🚀 Launch App
 
-[![Launch App](https://img.shields.io/badge/Launch-App-2e8b57?style=for-the-badge&logo=rocket)](https://YOUR_USERNAME.github.io/YOUR_REPO_NAME/)
+[![Launch App](https://img.shields.io/badge/Launch-App-2e8b57?style=for-the-badge&logo=rocket)](https://nobscamilo.github.io/Nutricalc/)
 
-**[🌐 Abrir Calculadora Glucémica](https://YOUR_USERNAME.github.io/YOUR_REPO_NAME/)**
+**[🌐 Abrir Calculadora Glucémica](https://nobscamilo.github.io/Nutricalc/)**
 
 ## 📥 Descargar Aplicación Completa
 
