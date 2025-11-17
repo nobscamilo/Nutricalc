@@ -1,0 +1,19 @@
+{
+  "name": "calculadora-glucemica-pwa",
+  "version": "1.0.0",
+  "description": "Progressive Web App para calcular índice y carga glucémica de alimentos",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "dev": "python3 -m http.server 8000"
+  },
+  "keywords": [
+    "pwa",
+    "glycemic-index",
+    "nutrition",
+    "health",
+    "food-calculator"
+  ],
+  "author": "Sarmiento",
+  "license": "MIT"
+}

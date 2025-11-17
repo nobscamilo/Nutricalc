@@ -1,0 +1,113 @@
+╔══════════════════════════════════════════════════════════════════╗
+║         CALCULADORA GLUCÉMICA PWA - INFORMACIÓN DE DESCARGA      ║
+╚══════════════════════════════════════════════════════════════════╝
+
+📦 ARCHIVOS DISPONIBLES PARA DESCARGA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. calculadora-glucemica-pwa.zip (49 KB)
+   - Formato ZIP compatible con Windows, Mac, Linux
+   - Incluye todos los archivos de la aplicación
+
+2. calculadora-glucemica-pwa.tar.gz (46 KB)
+   - Formato TAR.GZ para sistemas Unix/Linux
+   - Compresión optimizada
+
+📂 CONTENIDO DEL PAQUETE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ index.html                    - Página de inicio
+✓ app.html                      - Aplicación principal
+✓ manifest.json                 - Configuración PWA
+✓ sw.js                         - Service Worker (funcionalidad offline)
+✓ package.json                  - Configuración del proyecto
+✓ README.md                     - Documentación principal
+✓ INSTALL.md                    - Guía de instalación detallada
+✓ LICENSE                       - Licencia MIT
+✓ .gitignore                    - Configuración Git
+✓ Archivos HTML adicionales     - Versiones alternativas
+
+🚀 INICIO RÁPIDO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Descomprimir el archivo descargado
+2. Abrir una terminal en la carpeta
+3. Ejecutar: python3 -m http.server 8000
+4. Abrir navegador en: http://localhost:8000
+
+✨ CARACTERÍSTICAS PRINCIPALES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Funciona 100% offline después de la primera carga
+✅ Instalable como aplicación nativa (PWA)
+✅ Base de datos con 320+ alimentos
+✅ Cálculo de Índice Glucémico (IG) y Carga Glucémica (CG)
+✅ Scanner de códigos de barras
+✅ Exportación a CSV y PDF
+✅ Gestión de perfiles de usuario
+✅ Plantillas y recetas guardables
+✅ Diseño responsive (móvil, tablet, desktop)
+✅ Métricas avanzadas: IRE, VG, IG ponderado
+
+📊 MÉTRICAS CALCULADAS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• CG Total: Carga Glucémica total de la comida
+• IG Ponderado: Índice Glucémico promedio ponderado
+• IRE: Índice de Respuesta Estimada (CG / kg peso)
+• VG: Valor Glucémico por cada 100 kcal
+
+🔧 REQUISITOS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• Navegador moderno (Chrome, Firefox, Safari, Edge)
+• Python 3 o Node.js (para servidor local)
+• Conexión a internet (solo primera vez)
+
+📱 INSTALACIÓN COMO APP:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Desktop (Chrome/Edge):
+  → Busca el ícono ➕ en la barra de direcciones
+  → O haz clic en el botón "📲 Instalar"
+
+iOS (Safari):
+  → Toca Compartir → Añadir a pantalla de inicio
+
+Android (Chrome):
+  → Menú (⋮) → Añadir a pantalla de inicio
+
+🌐 DESPLIEGUE EN PRODUCCIÓN:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+GitHub Pages:
+  git init && git add . && git commit -m "Initial commit"
+  git push origin main
+  → Activar en Settings → Pages
+
+Vercel:
+  vercel
+
+Netlify:
+  netlify deploy
+
+📄 LICENCIA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MIT License - Uso libre para proyectos personales y comerciales
+
+👨‍💻 DESARROLLADO POR:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sarmiento
+
+🔗 ENLACES ÚTILES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• README.md    - Documentación completa
+• INSTALL.md   - Guía de instalación paso a paso
+• LICENSE      - Términos de la licencia
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+¡Gracias por usar Calculadora Glucémica PWA! 🍎
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
