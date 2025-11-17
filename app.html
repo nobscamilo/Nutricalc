@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
+<meta name="theme-color" content="#2e8b57" />
+<title>Calculadora Glucémica — PWA</title>
+<meta name="description" content="Calculadora glucémica PWA — perfil, modal selector, scanner, EAN mapping, export CSV/PDF" />
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%3E%3Ctext%20y='14'%20font-size='14'%3E%F0%9F%8D%9E%3C/text%3E%3C/svg%3E">
+
+<!-- Libraries -->
+<script src="https://unpkg.com/quagga@0.12.1/dist/quagga.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <div class="title">🍎 Calculadora Glucémica</div>
+      <div class="subtitle">Control nutricional inteligente — PWA</div>
+    </div>
+    <div class="header-actions">
+      <button id="installBtn" class="btn small" style="display:none">📲 Instalar</button>
+      <button id="runTestsBtn" class="btn small ghost">🧪 Tests</button>
+    </div>
+  </div>
+
+  <!-- Profile Panel -->
+  <div id="profilePanel" class="profile">
+    <h3 onclick="toggleProfile()">
+      👤 Perfil de usuario
+      <span class="profile-toggle" id="profileToggle">▼</span>
+    </h3>
+    <div class="profile-content" id="profileContent">
+      <label>
+        Nombre
+        <input id="nombre" type="text" placeholder="Tu nombre">
+      </label>
+      <label>
+        Sexo
+        <select id="sexo">
+          <option value="M">Masculino</option>
+          <option value="F">Femenino</option>
+        </select>
+      </label>
+      <label>
+        Edad
+        <input id="edad" type="number" min="1" max="120" placeholder="Años">
+      </label>
+      <label>
+        Peso (kg)
+        <input id="peso" type="number" step="0.1" placeholder="70">
+      </label>
+      <label>
+        Talla (cm)
+        <input id="talla" type="number" placeholder="170">
+      </label>
+    </div>
+    <div class="profile-actions">
+      <button id="guardarPerfil" class="btn small">💾 Guardar perfil</button>
+      <button id="cargarPerfil" class="btn small ghost">📂 Cargar perfil</button>
+    </div>
+    <p id="infoPerfil">Sin perfil guardado</p>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <select id="tipoComida" class="search">
+      <option>Desayuno</option>
+      <option>Merienda</option>
+      <option>Comida</option>
+      <option>Cena</option>
+    </select>
+    <input id="buscador" class="search" placeholder="🔍 Buscar alimento..." />
+    <button id="addBtn" class="btn small">➕ Agregar</button>
+    <button id="openModalBtn" class="btn small">📋 Selector</button>
+    <button id="scanBtn" class="btn small">📷 Escanear</button>
+    <button id="exportCSV" class="btn small ghost">📊 CSV</button>
+    <button id="exportPDF" class="btn small ghost">📄 PDF</button>
+    <button id="clearBtn" class="btn small danger">🗑️ Limpiar</button>
+  </div>
+
+  <!-- Table Desktop -->
+  <div class="table-wrap">
+    <table id="tabla">
+      <thead>
+        <tr>
+          <th>Alimento</th>
+          <th>Cantidad (g/ml)</th>
+          <th>IG</th>
+          <th>Carbs (g)</th>
+          <th>CG</th>
+          <th>Kcal</th>
+          <th>Quitar</th>
+        </tr>
+      </thead>
+      <tbody id="cuerpoTabla"></tbody>
+    </table>
+  </div>
+
+  <!-- Table Mobile Cards -->
+  <div class="table-cards" id="tableCards"></div>
+
+  <!-- Summary -->
+  <div class="summary">
+    <h3>📊 Resumen Nutricional</h3>
+    <div id="resultado">CG total: 0 | Kcal total: 0</div>
+    
+    <div class="bar-row">
+      <div class="bar-labels">
+        <span>CG total</span>
+        <span id="cgvalue">0</span>
+      </div>
+      <div class="bar-container">
+        <div id="cgbar" class="bar low" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="bar-row">
+      <div class="bar-labels">
+        <span>IG ponderado</span>
+        <span id="igprom">0</span>
+      </div>
+      <div class="small-note">Índice glucémico promedio ponderado por carbohidratos</div>
+    </div>
+
+    <div class="bar-row">
+      <div class="bar-labels">
+        <span>IRE (CG / kg)</span>
+        <span id="iretext">0</span>
+      </div>
+      <div class="bar-container">
+        <div id="irebar" class="bar low" style="width:0%"></div>
+      </div>
+      <div class="small-note">Índice de respuesta estimada por kg de peso</div>
+    </div>
+
+    <div class="bar-row">
+      <div class="bar-labels">
+        <span>VG (CG / Kcal × 100)</span>
+        <span id="vgtext">0</span>
+      </div>
+      <div class="bar-container">
+        <div id="vgbar" class="bar low" style="width:0%"></div>
+      </div>
+      <div class="small-note">Valor glucémico por cada 100 kcal</div>
+    </div>
+  </div>
+
+  <div id="localNotice" class="notice" style="display:none"></div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <strong>Selecciona alimento</strong>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <input id="modalSearch" class="search" placeholder="🔍 Filtrar alimentos..." />
+      <div id="modalList" class="list"></div>
+      <div id="modalPager" class="pager"></div>
+    </div>
+  </div>
+
+  <!-- Scanner Section -->
+  <div class="scan-section">
+    <h3>📷 Escáner de Códigos</h3>
+    <div class="scan-area">
+      <div id="scanStatus">Inactivo</div>
+      <video id="video" style="display:none" autoplay muted playsinline></video>
+      <canvas id="canvas" style="display:none"></canvas>
+    </div>
+  </div>
+
+  <!-- Recipes Section -->
+  <div class="recipes-section">
+    <h3>📖 Recetas / Plantillas</h3>
+    <div class="recipes-controls">
+      <button id="saveRecipeBtn" class="btn small ghost">💾 Guardar plantilla</button>
+      <select id="recipesSelect"></select>
+      <button id="loadRecipeBtn" class="btn small">📂 Cargar</button>
+    </div>
+    <div id="recipes"></div>
+  </div>
+
+  <div class="footer">powered by <strong>Sarmiento</strong></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
