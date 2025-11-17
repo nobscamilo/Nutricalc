@@ -6,7 +6,7 @@ Una aplicación web progresiva (PWA) para calcular índice y carga glucémica de
 
 ## 🚀 Launch App
 
-[![Launch App](https://img.shields.io/badge/Launch-App-2e8b57?style=for-the-badge&logo=rocket)](https://nobscamilo.github.io/Nutricalc/)
+[![Launch App](https://img.shields.io/badge/Launch-App-2e8b57?style=for-the-badge&logo=rocket)](https://nobscamilo.github.io/Nutricalc/app.html)
 
 **[🌐 Abrir Calculadora Glucémica](https://nobscamilo.github.io/Nutricalc/app.html)**
 
