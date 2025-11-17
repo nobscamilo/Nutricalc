@@ -6,9 +6,9 @@ Una aplicación web progresiva (PWA) para calcular índice y carga glucémica de
 
 ## 🚀 Launch App
 
-[![Launch App](https://img.shields.io/badge/Launch-App-2e8b57?style=for-the-badge&logo=rocket)](https://nobscamilo.github.io/Nutricalc/app.html)
+[![Launch App](https://img.shields.io/badge/Launch-App-2e8b57?style=for-the-badge&logo=rocket)](https://nobscamilo.github.io/Nutricalc/)
 
-**[🌐 Abrir Calculadora Glucémica](https://nobscamilo.github.io/Nutricalc/app.html)**
+**[🌐 Abrir Calculadora Glucémica](https://nobscamilo.github.io/Nutricalc/)**
 
 ## 📥 Descargar Aplicación Completa
 
@@ -80,8 +80,8 @@ python3 -m http.server 8000
 
 ```bash
 # Clonar repositorio
-git clone https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
-cd YOUR_REPO_NAME
+git clone https://github.com/nobscamilo/Nutricalc.git
+cd Nutricalc
 
 # Iniciar servidor
 python3 -m http.server 8000
@@ -123,7 +123,7 @@ git init
 git add .
 git commit -m "Initial commit"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
+git remote add origin https://github.com/nobscamilo/Nutricalc.git
 git push -u origin main
 ```
 
